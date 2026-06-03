@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>LogiAnalytics</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        header { background: #1e293b; padding: 20px 40px; display: flex; align-items: center; gap: 12px; }
+        header h1 { font-size: 22px; color: #f8fafc; }
+        .badge { background: #3b82f6; color: white; font-size: 11px; padding: 3px 10px; border-radius: 20px; }
+        .container { max-width: 900px; margin: 60px auto; padding: 0 20px; }
+        .hero { text-align: center; margin-bottom: 50px; }
+        .hero h2 { font-size: 36px; color: #f8fafc; margin-bottom: 12px; }
+        .hero p { color: #94a3b8; }
+        .upload-area { background: #1e293b; border: 2px dashed #334155; border-radius: 16px; padding: 40px; text-align: center; margin-bottom: 24px; }
+        .upload-icon { font-size: 48px; margin-bottom: 16px; }
+        .upload-area h3 { color: #f1f5f9; margin-bottom: 8px; }
+        .upload-area p { color: #64748b; margin-bottom: 16px; }
+        .file-name { color: #3b82f6; margin-top: 12px; }
+        .btn-file { background: #334155; color: #e2e8f0; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; }
+        .btn { background: #3b82f6; color: white; border: none; padding: 16px; border-radius: 12px; font-size: 16px; cursor: pointer; width: 100%; margin-bottom: 16px; }
+        .btn:disabled { background: #334155; color: #64748b; }
+        .loading { text-align: center; padding: 40px; display: none; }
+        .spinner { width: 40px; height: 40px; border: 3px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .resultado { background: #1e293b; border-radius: 16px; padding: 32px; margin-top: 32px; display: none; white-space: pre-wrap; color: #cbd5e1; line-height: 1.8; }
+    </style>
+</head>
+<body>
+    <header>
+        <span>🚛</span>
+        <h1>LogiAnalytics</h1>
+        <div class="badge">Beta</div>
+    </header>
+    <div class="container">
+        <div class="hero">
+            <h2>Analiza tu flota en segundos</h2>
+            <p>Sube tu Excel y obtén un reporte inteligente con IA</p>
+        </div>
+        <div class="upload-area">
+            <div class="upload-icon">📊</div>
+            <h3>Selecciona tu archivo Excel</h3>
+            <p>Formato: .xlsx</p>
+            <input type="file" id="archivo" accept=".xlsx" style="display:none">
+            <button class="btn-file" onclick="document.getElementById('archivo').click()">Elegir archivo</button>
+            <div class="file-name" id="fileName"></div>
+        </div>
+        <button class="btn" id="btnAnalizar" onclick="analizar()">Analizar con IA →</button>
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top:16px; color:#94a3b8">Analizando tu flota...</p>
+        </div>
+        <div class="resultado" id="resultado"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        document.getElementById('archivo').addEventListener('change', function() {
+            document.getElementById('fileName').innerText = this.files[0]?.name || '';
+        });
+
+        async function analizar() {
+            const archivo = document.getElementById('archivo').files[0];
+            if (!archivo) { alert('Sube un archivo primero'); return; }
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultado').style.display = 'none';
+            document.getElementById('btnAnalizar').disabled = true;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, {type: 'array'});
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const datos = XLSX.utils.sheet_to_csv(ws);
+                const response = await fetch('http://127.0.0.1:3000/analizar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ datos: datos })
+                });
+                const result = await response.json();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('resultado').style.display = 'block';
+                document.getElementById('resultado').innerText = result.resultado;
+                document.getElementById('btnAnalizar').disabled = false;
+            };
+            reader.readAsArrayBuffer(archivo);
+        }
+    </script>
+</body>
+</html>
