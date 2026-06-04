@@ -22,14 +22,22 @@ def analizar():
     if 'archivo' not in request.files:
         return jsonify({"error": "No se recibió archivo"}), 400
 
-    archivo = request.files['archivo']
-    wb = openpyxl.load_workbook(io.BytesIO(archivo.read()), data_only=True)
-    ws = wb.active
+    try:
+        archivo = request.files['archivo']
+        wb = openpyxl.load_workbook(io.BytesIO(archivo.read()), data_only=True)
+        ws = wb.active
 
-    rows = []
-    for row in ws.iter_rows(values_only=True):
-        rows.append(','.join([str(c) if c is not None else '' for c in row]))
-    datos = '\n'.join(rows)
+        rows = []
+        for row in ws.iter_rows(values_only=True):
+            rows.append(','.join([str(c) if c is not None else '' for c in row]))
+        datos = '\n'.join(rows)
+
+        # Limit data to avoid exceeding input token limits
+        if len(datos) > 40000:
+            datos = datos[:40000] + '\n[... datos truncados por tamaño ...]'
+
+    except Exception as e:
+        return jsonify({"error": f"No se pudo leer el archivo Excel: {str(e)}"}), 400
 
     prompt = f"""Eres un analista experto en logística y transporte en México.
 Analiza estos datos de viajes de flota y devuelve ÚNICAMENTE un JSON válido con la estructura exacta que se muestra a continuación.
@@ -78,21 +86,32 @@ Reglas:
 Datos del Excel:
 {datos}"""
 
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    try:
+        message = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=8000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+    except Exception as e:
+        return jsonify({"error": f"Error al llamar a la API: {str(e)}"}), 502
 
-    raw = message.content[0].text.strip()
-    if raw.startswith('```'):
-        parts = raw.split('```')
-        raw = parts[1] if len(parts) > 1 else raw
-        if raw.startswith('json'):
-            raw = raw[4:]
-    raw = raw.strip()
+    try:
+        raw = message.content[0].text.strip()
+        # Strip markdown code fences robustly
+        if '```' in raw:
+            raw = raw.split('```')[1]
+            if raw.lower().startswith('json'):
+                raw = raw[4:]
+        # Find the JSON object boundaries
+        start = raw.find('{')
+        end = raw.rfind('}')
+        if start == -1 or end == -1:
+            raise ValueError("No se encontró un objeto JSON en la respuesta")
+        raw = raw[start:end + 1]
+        result = json.loads(raw)
+    except Exception as e:
+        return jsonify({"error": f"Respuesta de IA no válida: {str(e)}"}), 500
 
-    result = json.loads(raw)
     return jsonify(result)
 
 
