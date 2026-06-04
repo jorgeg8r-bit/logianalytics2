@@ -2,88 +2,961 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>LogiAnalytics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogiAnalytics - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #1e293b;
+            --border: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --sidebar-width: 240px;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
-        header { background: #1e293b; padding: 20px 40px; display: flex; align-items: center; gap: 12px; }
-        header h1 { font-size: 22px; color: #f8fafc; }
-        .badge { background: #3b82f6; color: white; font-size: 11px; padding: 3px 10px; border-radius: 20px; }
-        .container { max-width: 900px; margin: 60px auto; padding: 0 20px; }
-        .hero { text-align: center; margin-bottom: 50px; }
-        .hero h2 { font-size: 36px; color: #f8fafc; margin-bottom: 12px; }
-        .hero p { color: #94a3b8; }
-        .upload-area { background: #1e293b; border: 2px dashed #334155; border-radius: 16px; padding: 40px; text-align: center; margin-bottom: 24px; }
-        .upload-icon { font-size: 48px; margin-bottom: 16px; }
-        .upload-area h3 { color: #f1f5f9; margin-bottom: 8px; }
-        .upload-area p { color: #64748b; margin-bottom: 16px; }
-        .file-name { color: #3b82f6; margin-top: 12px; }
-        .btn-file { background: #334155; color: #e2e8f0; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; }
-        .btn { background: #3b82f6; color: white; border: none; padding: 16px; border-radius: 12px; font-size: 16px; cursor: pointer; width: 100%; margin-bottom: 16px; }
-        .btn:disabled { background: #334155; color: #64748b; }
-        .loading { text-align: center; padding: 40px; display: none; }
-        .spinner { width: 40px; height: 40px; border: 3px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            z-index: 100;
+        }
+        .sidebar-logo {
+            padding: 22px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar-logo span { font-size: 22px; }
+        .sidebar-logo h1 { font-size: 17px; font-weight: 700; }
+        .logo-badge {
+            background: var(--accent-blue);
+            color: white;
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 20px;
+            margin-left: 2px;
+        }
+        .sidebar-nav { padding: 14px 0; flex: 1; overflow-y: auto; }
+        .nav-section-title {
+            padding: 10px 20px 4px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 20px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.15s;
+            font-size: 13.5px;
+        }
+        .nav-item:hover { background: rgba(59,130,246,0.07); color: var(--text-primary); }
+        .nav-item.active { background: rgba(59,130,246,0.12); color: var(--accent-blue); border-left-color: var(--accent-blue); }
+        .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+        .nav-badge {
+            display: none;
+            background: var(--accent-red);
+            color: white;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 20px;
+            margin-left: auto;
+            font-weight: 700;
+        }
+        .sidebar-footer {
+            padding: 14px 20px;
+            border-top: 1px solid var(--border);
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* ── Main ── */
+        .main { margin-left: var(--sidebar-width); flex: 1; display: flex; flex-direction: column; }
+
+        /* Topbar */
+        .topbar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .topbar-title { font-size: 18px; font-weight: 700; }
+        .topbar-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .topbar-actions { display: flex; gap: 8px; }
+        .btn-action {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 7px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.15s;
+        }
+        .btn-action:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .btn-primary-action {
+            background: var(--accent-blue);
+            border: 1px solid var(--accent-blue);
+            color: white;
+        }
+        .btn-primary-action:hover { background: #2563eb; border-color: #2563eb; color: white; }
+
+        /* Content */
+        .content { padding: 28px 32px; flex: 1; }
+
+        /* ── Upload screen ── */
+        #upload-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 65px);
+            text-align: center;
+            padding: 32px;
+        }
+        .upload-hero { margin-bottom: 36px; }
+        .upload-hero h2 { font-size: 30px; font-weight: 800; margin-bottom: 10px; }
+        .upload-hero p { color: var(--text-secondary); font-size: 15px; }
+        .upload-card {
+            background: var(--bg-card);
+            border: 2px dashed var(--border);
+            border-radius: 20px;
+            padding: 56px 72px;
+            width: 480px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .upload-card:hover { border-color: var(--accent-blue); }
+        .upload-card.dragover { border-color: var(--accent-blue); background: rgba(59,130,246,0.05); }
+        .upload-icon { font-size: 52px; margin-bottom: 18px; }
+        .upload-card h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+        .upload-card p { color: var(--text-muted); font-size: 13px; margin-bottom: 22px; }
+        .file-selected { color: var(--accent-blue); font-size: 13px; margin-top: 10px; font-weight: 500; display: none; }
+        .btn-choose {
+            background: var(--border);
+            color: var(--text-primary);
+            border: none;
+            padding: 9px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.15s;
+        }
+        .btn-choose:hover { background: #475569; }
+        .btn-analyze {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 13px 0;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            transition: background 0.15s;
+        }
+        .btn-analyze:hover { background: #2563eb; }
+        .btn-analyze:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+
+        /* ── Loading ── */
+        #loading-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 65px);
+            text-align: center;
+        }
+        .loader-ring {
+            width: 60px; height: 60px;
+            border: 4px solid var(--border);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 22px;
+        }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .resultado { background: #1e293b; border-radius: 16px; padding: 32px; margin-top: 32px; display: none; white-space: pre-wrap; color: #cbd5e1; line-height: 1.8; }
+        .loading-text { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+        .loading-sub { color: var(--text-muted); font-size: 13px; }
+
+        /* ── Dashboard ── */
+        #dashboard-screen { display: none; }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 3px;
+            margin-bottom: 24px;
+            background: var(--bg-card);
+            padding: 5px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            width: fit-content;
+        }
+        .tab {
+            padding: 7px 18px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-muted);
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .tab.active { background: var(--accent-blue); color: white; font-weight: 600; }
+        .tab:hover:not(.active) { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+
+        .tab-page { display: none; }
+        .tab-page.active { display: block; }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px 22px;
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 14px 14px 0 0;
+        }
+        .kpi-card.blue::before { background: var(--accent-blue); }
+        .kpi-card.green::before { background: var(--accent-green); }
+        .kpi-card.yellow::before { background: var(--accent-yellow); }
+        .kpi-card.purple::before { background: var(--accent-purple); }
+        .kpi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; font-weight: 600; }
+        .kpi-value { font-size: 26px; font-weight: 800; margin-bottom: 3px; line-height: 1; }
+        .kpi-unit { font-size: 11px; color: var(--text-secondary); }
+        .kpi-trend {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 10px;
+            padding: 3px 8px;
+            border-radius: 20px;
+        }
+        .kpi-trend.positiva { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+        .kpi-trend.negativa { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+        .kpi-trend.neutral { background: rgba(148,163,184,0.12); color: var(--text-secondary); }
+
+        /* Resumen card */
+        .resumen-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px 24px;
+            margin-bottom: 24px;
+        }
+        .resumen-card p { color: var(--text-secondary); line-height: 1.7; font-size: 14px; }
+
+        /* Charts */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px 24px;
+        }
+        .chart-card.full { grid-column: 1 / -1; }
+        .chart-title { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+        .chart-subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 18px; }
+
+        /* Section */
+        .section { margin-bottom: 24px; }
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+        .section-title { font-size: 15px; font-weight: 700; }
+        .section-badge {
+            font-size: 11px;
+            background: var(--border);
+            color: var(--text-secondary);
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        /* Table */
+        .table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th {
+            padding: 11px 18px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+        }
+        .data-table td {
+            padding: 13px 18px;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(51,65,85,0.5);
+            color: var(--text-secondary);
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .data-table td:first-child { color: var(--text-primary); font-weight: 500; }
+
+        .badge-efic {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: capitalize;
+        }
+        .badge-efic.alta { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+        .badge-efic.media { background: rgba(245,158,11,0.15); color: var(--accent-yellow); }
+        .badge-efic.baja { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+
+        /* Alerts */
+        .alerts-grid { display: flex; flex-direction: column; gap: 10px; }
+        .alert-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .alert-item.critica { border-left-color: var(--accent-red); }
+        .alert-item.advertencia { border-left-color: var(--accent-yellow); }
+        .alert-item.info { border-left-color: var(--accent-blue); }
+        .alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+        .alert-title { font-size: 13.5px; font-weight: 600; margin-bottom: 3px; }
+        .alert-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+        .alert-unit { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+        /* Recomendaciones */
+        .rec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+        .rec-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px 20px;
+        }
+        .rec-priority {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            margin-bottom: 8px;
+        }
+        .rec-priority.alta { color: var(--accent-red); }
+        .rec-priority.media { color: var(--accent-yellow); }
+        .rec-priority.baja { color: var(--accent-green); }
+        .rec-title { font-size: 13.5px; font-weight: 600; margin-bottom: 7px; }
+        .rec-desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; }
+        .rec-saving { margin-top: 12px; font-size: 12px; color: var(--accent-green); font-weight: 600; }
     </style>
 </head>
 <body>
-    <header>
-        <span>🚛</span>
-        <h1>LogiAnalytics</h1>
-        <div class="badge">Beta</div>
-    </header>
-    <div class="container">
-        <div class="hero">
-            <h2>Analiza tu flota en segundos</h2>
-            <p>Sube tu Excel y obtén un reporte inteligente con IA</p>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <span>🚛</span>
+            <h1>LogiAnalytics</h1>
+            <div class="logo-badge">v2</div>
         </div>
-        <div class="upload-area">
-            <div class="upload-icon">📊</div>
-            <h3>Selecciona tu archivo Excel</h3>
-            <p>Formato: .xlsx</p>
-            <input type="file" id="archivo" accept=".xlsx" style="display:none">
-            <button class="btn-file" onclick="document.getElementById('archivo').click()">Elegir archivo</button>
-            <div class="file-name" id="fileName"></div>
-        </div>
-        <button class="btn" id="btnAnalizar" onclick="analizar()">Analizar con IA →</button>
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p style="margin-top:16px; color:#94a3b8">Analizando tu flota...</p>
-        </div>
-        <div class="resultado" id="resultado"></div>
-    </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section-title">Análisis</div>
+            <div class="nav-item active" data-tab="tab-overview" onclick="navTo(this)">
+                <span class="nav-icon">📊</span> Resumen
+            </div>
+            <div class="nav-item" data-tab="tab-overview" onclick="navTo(this)">
+                <span class="nav-icon">🎯</span> KPIs
+            </div>
+            <div class="nav-item" data-tab="tab-rutas" onclick="navTo(this)">
+                <span class="nav-icon">🗺️</span> Rutas
+            </div>
+            <div class="nav-item" data-tab="tab-unidades" onclick="navTo(this)">
+                <span class="nav-icon">🚚</span> Unidades
+            </div>
+            <div class="nav-section-title" style="margin-top:8px">Operaciones</div>
+            <div class="nav-item" data-tab="tab-overview" onclick="navTo(this)">
+                <span class="nav-icon">💰</span> Costos
+            </div>
+            <div class="nav-item" data-tab="tab-overview" onclick="navTo(this)">
+                <span class="nav-icon">📅</span> Períodos
+            </div>
+            <div class="nav-item" data-tab="tab-alertas" onclick="navTo(this)">
+                <span class="nav-icon">🔔</span> Alertas
+                <span class="nav-badge" id="alert-badge"></span>
+            </div>
+            <div class="nav-item" data-tab="tab-alertas" onclick="navTo(this)">
+                <span class="nav-icon">💡</span> Recomendaciones
+            </div>
+        </nav>
+        <div class="sidebar-footer">LogiAnalytics © 2025</div>
+    </aside>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Main -->
+    <main class="main">
+        <div class="topbar">
+            <div>
+                <div class="topbar-title" id="topbar-title">Dashboard de Flota</div>
+                <div class="topbar-sub" id="topbar-sub">Sube un archivo Excel para comenzar</div>
+            </div>
+            <div class="topbar-actions">
+                <button class="btn-action" onclick="nuevaConsulta()">↩ Nueva consulta</button>
+                <button class="btn-action btn-primary-action" id="btn-pdf" onclick="exportarPDF()" style="display:none">⬇ Exportar PDF</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Upload -->
+            <div id="upload-screen">
+                <div class="upload-hero">
+                    <h2>Analiza tu flota con IA</h2>
+                    <p>Sube tu archivo Excel y obtén un dashboard completo en segundos</p>
+                </div>
+                <div class="upload-card" id="drop-zone">
+                    <div class="upload-icon">📊</div>
+                    <h3>Selecciona tu archivo Excel</h3>
+                    <p>Arrastra y suelta aquí, o haz clic para seleccionar<br>Formato: .xlsx</p>
+                    <input type="file" id="archivo" accept=".xlsx,.xls" style="display:none" onchange="onFileSelect(this)">
+                    <button class="btn-choose" onclick="document.getElementById('archivo').click()">Elegir archivo .xlsx</button>
+                    <div class="file-selected" id="file-name"></div>
+                    <button class="btn-analyze" id="btn-analizar" onclick="analizar()" disabled>Analizar con IA →</button>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading-screen">
+                <div class="loader-ring"></div>
+                <div class="loading-text">Analizando tu flota...</div>
+                <div class="loading-sub">La IA está procesando los datos. Esto puede tomar unos segundos.</div>
+            </div>
+
+            <!-- Dashboard -->
+            <div id="dashboard-screen">
+                <div class="tabs">
+                    <div class="tab active" onclick="showTab('tab-overview', this)">Vista General</div>
+                    <div class="tab" onclick="showTab('tab-rutas', this)">Rutas</div>
+                    <div class="tab" onclick="showTab('tab-unidades', this)">Unidades</div>
+                    <div class="tab" onclick="showTab('tab-alertas', this)">Alertas & Recomendaciones</div>
+                </div>
+
+                <!-- Tab: Overview -->
+                <div id="tab-overview" class="tab-page active">
+                    <div class="resumen-card">
+                        <div class="section-header" style="margin-bottom:10px">
+                            <div class="section-title">📋 Resumen Ejecutivo</div>
+                        </div>
+                        <p id="resumen-text"></p>
+                    </div>
+                    <div class="kpi-grid" id="kpi-grid"></div>
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <div class="chart-title">Viajes por Período</div>
+                            <div class="chart-subtitle">Volumen de operaciones en el tiempo</div>
+                            <canvas id="chart-periodos" height="230"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-title">Costos por Categoría</div>
+                            <div class="chart-subtitle">Distribución del gasto operativo</div>
+                            <canvas id="chart-costos" height="230"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Rutas -->
+                <div id="tab-rutas" class="tab-page">
+                    <div class="charts-grid" style="margin-bottom:20px">
+                        <div class="chart-card">
+                            <div class="chart-title">Costo/Km por Ruta</div>
+                            <div class="chart-subtitle">Eficiencia comparativa — verde=alta, amarillo=media, rojo=baja</div>
+                            <canvas id="chart-rutas-cost" height="230"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-title">Viajes por Ruta</div>
+                            <div class="chart-subtitle">Frecuencia de operación</div>
+                            <canvas id="chart-rutas-viajes" height="230"></canvas>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-title">Tabla de Eficiencia por Ruta</div>
+                            <div class="section-badge" id="rutas-count"></div>
+                        </div>
+                        <div class="table-card">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ruta</th>
+                                        <th>Viajes</th>
+                                        <th>Km Promedio</th>
+                                        <th>Costo Promedio</th>
+                                        <th>Costo/Km</th>
+                                        <th>Eficiencia</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rutas-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Unidades -->
+                <div id="tab-unidades" class="tab-page">
+                    <div class="charts-grid" style="margin-bottom:20px">
+                        <div class="chart-card full">
+                            <div class="chart-title">Rendimiento por Unidad</div>
+                            <div class="chart-subtitle">Score de eficiencia (barras) y km totales (línea)</div>
+                            <canvas id="chart-unidades" height="190"></canvas>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-title">Detalle de Unidades</div>
+                            <div class="section-badge" id="unidades-count"></div>
+                        </div>
+                        <div class="table-card">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Unidad</th>
+                                        <th>Viajes</th>
+                                        <th>Km Total</th>
+                                        <th>Costo Total</th>
+                                        <th>Score Eficiencia</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unidades-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Alertas & Rec -->
+                <div id="tab-alertas" class="tab-page">
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-title">🔔 Alertas Operativas</div>
+                            <div class="section-badge" id="alertas-count"></div>
+                        </div>
+                        <div class="alerts-grid" id="alerts-container"></div>
+                    </div>
+                    <div class="section" style="margin-top:24px">
+                        <div class="section-header">
+                            <div class="section-title">💡 Recomendaciones</div>
+                        </div>
+                        <div class="rec-grid" id="rec-container"></div>
+                    </div>
+                    <div class="resumen-card" style="margin-top:20px; margin-bottom:0">
+                        <div class="section-header" style="margin-bottom:10px">
+                            <div class="section-title">📌 Conclusiones</div>
+                        </div>
+                        <p id="conclusiones-text"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
     <script>
-        document.getElementById('archivo').addEventListener('change', function() {
-            document.getElementById('fileName').innerText = this.files[0]?.name || '';
+        let charts = {};
+
+        // Nav sidebar
+        function navTo(el) {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+            const tab = el.dataset.tab;
+            if (tab) showTab(tab, null);
+        }
+
+        // Tabs
+        function showTab(id, tabEl) {
+            document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if (tabEl) {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tabEl.classList.add('active');
+            }
+        }
+
+        // File select
+        function onFileSelect(input) {
+            const file = input.files[0];
+            if (file) {
+                const fn = document.getElementById('file-name');
+                fn.textContent = '📎 ' + file.name;
+                fn.style.display = 'block';
+                document.getElementById('btn-analizar').disabled = false;
+            }
+        }
+
+        // Drag & drop
+        const dropZone = document.getElementById('drop-zone');
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                document.getElementById('archivo').files = dt.files;
+                onFileSelect(document.getElementById('archivo'));
+            }
         });
 
         async function analizar() {
             const archivo = document.getElementById('archivo').files[0];
-            if (!archivo) { alert('Sube un archivo primero'); return; }
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('resultado').style.display = 'none';
-            document.getElementById('btnAnalizar').disabled = true;
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const data = new Uint8Array(e.target.result);
-                const wb = XLSX.read(data, {type: 'array'});
-                const ws = wb.Sheets[wb.SheetNames[0]];
-                const datos = XLSX.utils.sheet_to_csv(ws);
-                const response = await fetch('/analizar', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ datos: datos })
-                });
-                const result = await response.json();
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('resultado').style.display = 'block';
-                document.getElementById('resultado').innerText = result.resultado;
-                document.getElementById('btnAnalizar').disabled = false;
+            if (!archivo) return;
+
+            document.getElementById('upload-screen').style.display = 'none';
+            document.getElementById('loading-screen').style.display = 'flex';
+
+            const formData = new FormData();
+            formData.append('archivo', archivo);
+
+            try {
+                const resp = await fetch('/analizar', { method: 'POST', body: formData });
+                if (!resp.ok) throw new Error('Error del servidor: ' + resp.status);
+                const data = await resp.json();
+                if (data.error) throw new Error(data.error);
+                renderDashboard(data);
+            } catch (err) {
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('upload-screen').style.display = 'flex';
+                alert('Error al analizar: ' + err.message);
+            }
+        }
+
+        function nuevaConsulta() {
+            document.getElementById('dashboard-screen').style.display = 'none';
+            document.getElementById('upload-screen').style.display = 'flex';
+            document.getElementById('btn-pdf').style.display = 'none';
+            document.getElementById('topbar-sub').textContent = 'Sube un archivo Excel para comenzar';
+            document.getElementById('archivo').value = '';
+            document.getElementById('file-name').style.display = 'none';
+            document.getElementById('btn-analizar').disabled = true;
+            Object.values(charts).forEach(c => c.destroy());
+            charts = {};
+            showTab('tab-overview', document.querySelectorAll('.tab')[0]);
+        }
+
+        function renderDashboard(data) {
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('dashboard-screen').style.display = 'block';
+            document.getElementById('btn-pdf').style.display = 'flex';
+            document.getElementById('topbar-sub').textContent =
+                'Análisis completado · ' + new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            // Resumen
+            document.getElementById('resumen-text').textContent = data.resumen || '';
+
+            // KPIs
+            const colors = ['blue', 'green', 'yellow', 'purple'];
+            const arrows = { positiva: '↑', negativa: '↓', neutral: '→' };
+            const kpiGrid = document.getElementById('kpi-grid');
+            kpiGrid.innerHTML = '';
+            (data.kpis || []).slice(0, 4).forEach((kpi, i) => {
+                const arr = arrows[kpi.tendencia] || '→';
+                kpiGrid.innerHTML += `<div class="kpi-card ${colors[i]}">
+                    <div class="kpi-label">${kpi.titulo}</div>
+                    <div class="kpi-value">${Number(kpi.valor).toLocaleString('es-MX')}</div>
+                    <div class="kpi-unit">${kpi.unidad}</div>
+                    <div class="kpi-trend ${kpi.tendencia}">${arr} ${kpi.cambio || ''}</div>
+                </div>`;
+            });
+
+            // Charts
+            buildChartPeriodos(data.viajes_por_periodo || []);
+            buildChartCostos(data.costos_por_categoria || []);
+            buildChartRutas(data.rutas_eficiencia || []);
+            buildChartUnidades(data.unidades_rendimiento || []);
+
+            // Tabla rutas
+            const rutasTbody = document.getElementById('rutas-tbody');
+            rutasTbody.innerHTML = '';
+            (data.rutas_eficiencia || []).forEach(r => {
+                rutasTbody.innerHTML += `<tr>
+                    <td>${r.ruta}</td>
+                    <td>${Number(r.viajes).toLocaleString('es-MX')}</td>
+                    <td>${Number(r.km_promedio).toLocaleString('es-MX')} km</td>
+                    <td>$${Number(r.costo_promedio).toLocaleString('es-MX')}</td>
+                    <td>$${Number(r.costo_por_km).toFixed(2)}</td>
+                    <td><span class="badge-efic ${r.eficiencia}">${r.eficiencia}</span></td>
+                </tr>`;
+            });
+            document.getElementById('rutas-count').textContent = (data.rutas_eficiencia || []).length + ' rutas';
+
+            // Tabla unidades
+            const unidadesTbody = document.getElementById('unidades-tbody');
+            unidadesTbody.innerHTML = '';
+            (data.unidades_rendimiento || []).forEach(u => {
+                const score = Number(u.eficiencia_score);
+                const col = score >= 75 ? 'var(--accent-green)' : score >= 50 ? 'var(--accent-yellow)' : 'var(--accent-red)';
+                unidadesTbody.innerHTML += `<tr>
+                    <td>${u.unidad}</td>
+                    <td>${Number(u.viajes).toLocaleString('es-MX')}</td>
+                    <td>${Number(u.km_total).toLocaleString('es-MX')} km</td>
+                    <td>$${Number(u.costo_total).toLocaleString('es-MX')}</td>
+                    <td><span style="color:${col};font-weight:700">${score}/100</span></td>
+                </tr>`;
+            });
+            document.getElementById('unidades-count').textContent = (data.unidades_rendimiento || []).length + ' unidades';
+
+            // Alertas
+            const alertIcons = { critica: '🚨', advertencia: '⚠️', info: 'ℹ️' };
+            const alertContainer = document.getElementById('alerts-container');
+            alertContainer.innerHTML = '';
+            const alertas = data.alertas || [];
+            alertas.forEach(a => {
+                alertContainer.innerHTML += `<div class="alert-item ${a.tipo}">
+                    <div class="alert-icon">${alertIcons[a.tipo] || 'ℹ️'}</div>
+                    <div>
+                        <div class="alert-title">${a.titulo}</div>
+                        <div class="alert-desc">${a.descripcion}</div>
+                        ${a.unidad ? `<div class="alert-unit">Unidad: ${a.unidad}</div>` : ''}
+                    </div>
+                </div>`;
+            });
+            document.getElementById('alertas-count').textContent = alertas.length + ' alertas';
+            const criticas = alertas.filter(a => a.tipo === 'critica').length;
+            if (criticas > 0) {
+                const badge = document.getElementById('alert-badge');
+                badge.textContent = criticas;
+                badge.style.display = 'inline';
+            }
+
+            // Recomendaciones
+            const recContainer = document.getElementById('rec-container');
+            recContainer.innerHTML = '';
+            (data.recomendaciones || []).forEach(r => {
+                recContainer.innerHTML += `<div class="rec-card">
+                    <div class="rec-priority ${r.prioridad}">● Prioridad ${r.prioridad}</div>
+                    <div class="rec-title">${r.titulo}</div>
+                    <div class="rec-desc">${r.descripcion}</div>
+                    ${r.ahorro_estimado ? `<div class="rec-saving">💰 Ahorro estimado: ${r.ahorro_estimado}</div>` : ''}
+                </div>`;
+            });
+
+            // Conclusiones
+            document.getElementById('conclusiones-text').textContent = data.conclusiones || '';
+        }
+
+        function chartDefaults() {
+            return {
+                responsive: true,
+                plugins: { legend: { labels: { color: '#94a3b8', font: { size: 12 } } } },
+                scales: {
+                    x: { ticks: { color: '#94a3b8', maxRotation: 35 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                }
             };
-            reader.readAsArrayBuffer(archivo);
+        }
+
+        function buildChartPeriodos(data) {
+            if (charts.periodos) charts.periodos.destroy();
+            const ctx = document.getElementById('chart-periodos').getContext('2d');
+            charts.periodos = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.periodo),
+                    datasets: [{
+                        label: 'Viajes',
+                        data: data.map(d => d.viajes),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59,130,246,0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#3b82f6',
+                        pointRadius: 4,
+                    }]
+                },
+                options: chartDefaults()
+            });
+        }
+
+        function buildChartCostos(data) {
+            if (charts.costos) charts.costos.destroy();
+            const ctx = document.getElementById('chart-costos').getContext('2d');
+            const palette = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899'];
+            charts.costos = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.map(d => d.categoria),
+                    datasets: [{
+                        data: data.map(d => d.monto),
+                        backgroundColor: palette.slice(0, data.length),
+                        borderWidth: 0,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 14, font: { size: 12 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ` ${ctx.label}: $${Number(ctx.raw).toLocaleString('es-MX')} (${data[ctx.dataIndex]?.porcentaje || 0}%)`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function buildChartRutas(data) {
+            if (charts.rutasCost) charts.rutasCost.destroy();
+            const ctx1 = document.getElementById('chart-rutas-cost').getContext('2d');
+            charts.rutasCost = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.ruta),
+                    datasets: [{
+                        label: 'Costo/Km (MXN)',
+                        data: data.map(d => d.costo_por_km),
+                        backgroundColor: data.map(d =>
+                            d.eficiencia === 'alta' ? 'rgba(16,185,129,0.75)' :
+                            d.eficiencia === 'media' ? 'rgba(245,158,11,0.75)' : 'rgba(239,68,68,0.75)'
+                        ),
+                        borderRadius: 6,
+                    }]
+                },
+                options: chartDefaults()
+            });
+
+            if (charts.rutasViajes) charts.rutasViajes.destroy();
+            const ctx2 = document.getElementById('chart-rutas-viajes').getContext('2d');
+            charts.rutasViajes = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.ruta),
+                    datasets: [{
+                        label: 'Viajes',
+                        data: data.map(d => d.viajes),
+                        backgroundColor: 'rgba(139,92,246,0.75)',
+                        borderRadius: 6,
+                    }]
+                },
+                options: chartDefaults()
+            });
+        }
+
+        function buildChartUnidades(data) {
+            if (charts.unidades) charts.unidades.destroy();
+            const ctx = document.getElementById('chart-unidades').getContext('2d');
+            charts.unidades = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.unidad),
+                    datasets: [
+                        {
+                            label: 'Score Eficiencia',
+                            data: data.map(d => d.eficiencia_score),
+                            backgroundColor: 'rgba(59,130,246,0.75)',
+                            borderRadius: 6,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: 'Km Totales',
+                            data: data.map(d => d.km_total),
+                            type: 'line',
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16,185,129,0.1)',
+                            tension: 0.3,
+                            pointBackgroundColor: '#10b981',
+                            pointRadius: 4,
+                            yAxisID: 'y1',
+                            fill: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: '#94a3b8', font: { size: 12 } } } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.04)' }, position: 'left', title: { display: true, text: 'Score', color: '#64748b' } },
+                        y1: { ticks: { color: '#10b981' }, grid: { drawOnChartArea: false }, position: 'right', title: { display: true, text: 'Km', color: '#10b981' } }
+                    }
+                }
+            });
+        }
+
+        async function exportarPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const content = document.getElementById('dashboard-screen');
+            const canvas = await html2canvas(content, { backgroundColor: '#0f172a', scale: 1.5 });
+            const img = canvas.toDataURL('image/png');
+            const W = pdf.internal.pageSize.getWidth();
+            const H = pdf.internal.pageSize.getHeight();
+            const imgH = (canvas.height * W) / canvas.width;
+            let y = 0;
+            while (y < imgH) {
+                if (y > 0) pdf.addPage();
+                pdf.addImage(img, 'PNG', 0, -y, W, imgH);
+                y += H;
+            }
+            pdf.save('LogiAnalytics-Reporte.pdf');
         }
     </script>
 </body>
