@@ -72,7 +72,7 @@
                 const wb = XLSX.read(data, {type: 'array'});
                 const ws = wb.Sheets[wb.SheetNames[0]];
                 const datos = XLSX.utils.sheet_to_csv(ws);
-                const response = await fetch('http://127.0.0.1:3000/analizar', {
+                const response = await fetch('/analizar', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ datos: datos })
