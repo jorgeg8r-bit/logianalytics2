@@ -5,6 +5,12 @@ import anthropic
 app = Flask(__name__)
 CORS(app)
 
+from flask import send_file
+
+@app.route('/')
+def index():
+    return send_file('index.html')
+
 import os
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
