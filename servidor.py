@@ -1,8 +1,9 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, Response, stream_with_context
 from flask_cors import CORS
 import anthropic
 import os
 import json
+import threading
 
 app = Flask(__name__)
 CORS(app)
@@ -63,23 +64,40 @@ El JSON debe tener EXACTAMENTE esta estructura:
 DATOS A ANALIZAR:
 {datos}"""
 
-    try:
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        raw = message.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        if raw.endswith("```"):
-            raw = raw[:-3]
-        analisis = json.loads(raw.strip())
-        return jsonify({"ok": True, "analisis": analisis})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
+    result = {}
+    done = threading.Event()
+
+    def call_claude():
+        try:
+            message = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=4096,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            raw = message.content[0].text.strip()
+            if raw.startswith("```"):
+                raw = raw.split("```")[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            if raw.endswith("```"):
+                raw = raw[:-3]
+            analisis = json.loads(raw.strip())
+            result['payload'] = {"ok": True, "analisis": analisis}
+        except Exception as e:
+            result['payload'] = {"ok": False, "error": str(e)}
+        finally:
+            done.set()
+
+    threading.Thread(target=call_claude, daemon=True).start()
+
+    def generate():
+        # Send a newline every 5 s to keep Railway's proxy from timing out.
+        # JSON.parse ignores leading whitespace so the frontend is unaffected.
+        while not done.wait(timeout=5):
+            yield '\n'
+        yield json.dumps(result['payload'])
+
+    return Response(stream_with_context(generate()), content_type='application/json')
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 3000))
