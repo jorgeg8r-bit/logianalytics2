@@ -3,961 +3,1409 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LogiAnalytics - Dashboard</title>
+    <title>LogiAnalytics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-card: #1e293b;
-            --border: #334155;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            --accent-blue: #3b82f6;
-            --accent-green: #10b981;
-            --accent-yellow: #f59e0b;
-            --accent-red: #ef4444;
-            --accent-purple: #8b5cf6;
-            --sidebar-width: 240px;
+            --bg:         #07090f;
+            --sidebar-bg: #0a0c14;
+            --card:       #0d1117;
+            --border:     #1a2030;
+            --border-2:   #222c3c;
+            --accent:     #00d4aa;
+            --accent-dim: rgba(0,212,170,.10);
+            --blue:       #3b82f6;
+            --blue-dim:   rgba(59,130,246,.10);
+            --amber:      #f59e0b;
+            --purple:     #8b5cf6;
+            --red:        #ef4444;
+            --green:      #10b981;
+            --text:       #eef2ff;
+            --text-2:     #8892a4;
+            --text-3:     #4a5568;
+            --sw:         256px;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
             display: flex;
             min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.5;
         }
 
-        /* ── Sidebar ── */
+        /* Syne on all headings and big numbers */
+        h1, h2, h3, h4,
+        .syne, .metric-val, .kpi-val, .section-ttl,
+        .sidebar-brand, .btn-main { font-family: 'Syne', sans-serif; }
+
+        /* ────────────────────────────────────────
+           SIDEBAR
+        ──────────────────────────────────────── */
         .sidebar {
-            width: var(--sidebar-width);
-            background: var(--bg-secondary);
+            width: var(--sw);
+            background: var(--sidebar-bg);
             border-right: 1px solid var(--border);
+            position: fixed;
+            inset: 0 auto 0 0;
             display: flex;
             flex-direction: column;
-            position: fixed;
-            top: 0; left: 0; bottom: 0;
-            z-index: 100;
+            z-index: 200;
         }
+
         .sidebar-logo {
-            padding: 22px 20px;
+            padding: 22px 18px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        .sidebar-logo span { font-size: 22px; }
-        .sidebar-logo h1 { font-size: 17px; font-weight: 700; }
-        .logo-badge {
-            background: var(--accent-blue);
-            color: white;
-            font-size: 10px;
-            padding: 2px 7px;
-            border-radius: 20px;
-            margin-left: 2px;
+
+        .logo-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--accent) 0%, #009f80 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            flex-shrink: 0;
         }
-        .sidebar-nav { padding: 14px 0; flex: 1; overflow-y: auto; }
-        .nav-section-title {
-            padding: 10px 20px 4px;
+
+        .sidebar-brand {
+            font-size: 15.5px;
+            font-weight: 700;
+            letter-spacing: -.3px;
+            color: var(--text);
+        }
+        .sidebar-brand em { color: var(--accent); font-style: normal; }
+
+        .sidebar-ver {
+            margin-left: auto;
+            font-size: 10px;
+            font-weight: 600;
+            background: var(--accent-dim);
+            color: var(--accent);
+            padding: 2px 8px;
+            border-radius: 20px;
+            border: 1px solid rgba(0,212,170,.18);
+            white-space: nowrap;
+        }
+
+        .sidebar-nav { flex: 1; padding: 14px 0; overflow-y: auto; }
+
+        .nav-group {
             font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
+            letter-spacing: .1em;
+            color: var(--text-3);
             font-weight: 600;
+            padding: 10px 18px 4px;
         }
+
         .nav-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 9px 20px;
-            color: var(--text-secondary);
+            gap: 9px;
+            padding: 9px 18px;
+            color: var(--text-2);
             cursor: pointer;
-            border-left: 3px solid transparent;
-            transition: all 0.15s;
+            border-left: 2px solid transparent;
             font-size: 13.5px;
+            font-weight: 400;
+            transition: all .15s;
+            position: relative;
         }
-        .nav-item:hover { background: rgba(59,130,246,0.07); color: var(--text-primary); }
-        .nav-item.active { background: rgba(59,130,246,0.12); color: var(--accent-blue); border-left-color: var(--accent-blue); }
-        .nav-icon { font-size: 15px; width: 20px; text-align: center; }
-        .nav-badge {
-            display: none;
-            background: var(--accent-red);
-            color: white;
-            font-size: 10px;
-            padding: 1px 6px;
-            border-radius: 20px;
+        .nav-item:hover { background: rgba(255,255,255,.025); color: var(--text); }
+        .nav-item.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+            border-left-color: var(--accent);
+            font-weight: 500;
+        }
+
+        .nav-ico { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+
+        .nav-pill {
             margin-left: auto;
+            font-size: 10px;
             font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 20px;
         }
-        .sidebar-footer {
-            padding: 14px 20px;
-            border-top: 1px solid var(--border);
+        .nav-pill.danger { background: rgba(239,68,68,.18); color: var(--red); }
+        .nav-pill.muted  { background: var(--border); color: var(--text-3); display:none; }
+
+        /* Client card */
+        .client-card {
+            margin: 0 12px 16px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            padding: 14px 15px;
+        }
+
+        .client-top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .client-ava {
+            width: 32px; height: 32px;
+            background: linear-gradient(135deg, var(--blue), var(--purple));
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .client-info { min-width: 0; }
+        .client-name {
+            font-size: 12.5px;
+            font-weight: 600;
+            font-family: 'Syne', sans-serif;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text);
+        }
+        .client-file {
             font-size: 11px;
-            color: var(--text-muted);
+            color: var(--text-3);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        /* ── Main ── */
-        .main { margin-left: var(--sidebar-width); flex: 1; display: flex; flex-direction: column; }
+        .client-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+        }
+        .status-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            transition: background .3s;
+        }
 
-        /* Topbar */
+        /* ────────────────────────────────────────
+           MAIN + TOPBAR
+        ──────────────────────────────────────── */
+        .main {
+            margin-left: var(--sw);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
         .topbar {
-            background: var(--bg-secondary);
+            background: var(--sidebar-bg);
             border-bottom: 1px solid var(--border);
-            padding: 14px 32px;
+            padding: 13px 30px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             position: sticky;
             top: 0;
-            z-index: 50;
+            z-index: 100;
+            gap: 16px;
         }
-        .topbar-title { font-size: 18px; font-weight: 700; }
-        .topbar-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-        .topbar-actions { display: flex; gap: 8px; }
-        .btn-action {
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            color: var(--text-secondary);
-            padding: 7px 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
-            display: flex;
+
+        .topbar-title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -.3px;
+        }
+        .topbar-sub {
+            font-size: 12px;
+            color: var(--text-2);
+            margin-top: 1px;
+        }
+
+        .topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+        .btn {
+            display: inline-flex;
             align-items: center;
-            gap: 5px;
-            transition: all 0.15s;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+            white-space: nowrap;
         }
-        .btn-action:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
-        .btn-primary-action {
-            background: var(--accent-blue);
-            border: 1px solid var(--accent-blue);
-            color: white;
+
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid var(--border-2);
+            color: var(--text-2);
         }
-        .btn-primary-action:hover { background: #2563eb; border-color: #2563eb; color: white; }
+        .btn-ghost:hover { border-color: var(--text-3); color: var(--text); background: rgba(255,255,255,.03); }
 
-        /* Content */
-        .content { padding: 28px 32px; flex: 1; }
+        .btn-main {
+            background: var(--accent);
+            color: #07090f;
+            font-weight: 700;
+            letter-spacing: -.2px;
+        }
+        .btn-main:hover { background: #00bfa0; }
 
-        /* ── Upload screen ── */
-        #upload-screen {
+        /* ────────────────────────────────────────
+           CONTENT WRAPPER
+        ──────────────────────────────────────── */
+        .content { padding: 26px 30px; flex: 1; }
+
+        /* ────────────────────────────────────────
+           UPLOAD SCREEN
+        ──────────────────────────────────────── */
+        #scr-upload {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: calc(100vh - 65px);
-            text-align: center;
-            padding: 32px;
+            min-height: calc(100vh - 63px);
+            padding: 40px 20px;
         }
-        .upload-hero { margin-bottom: 36px; }
-        .upload-hero h2 { font-size: 30px; font-weight: 800; margin-bottom: 10px; }
-        .upload-hero p { color: var(--text-secondary); font-size: 15px; }
-        .upload-card {
-            background: var(--bg-card);
-            border: 2px dashed var(--border);
+
+        .upload-hero { text-align: center; margin-bottom: 38px; }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--accent-dim);
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 5px 14px;
             border-radius: 20px;
-            padding: 56px 72px;
-            width: 480px;
-            transition: border-color 0.2s, background 0.2s;
+            border: 1px solid rgba(0,212,170,.2);
+            margin-bottom: 18px;
         }
-        .upload-card:hover { border-color: var(--accent-blue); }
-        .upload-card.dragover { border-color: var(--accent-blue); background: rgba(59,130,246,0.05); }
-        .upload-icon { font-size: 52px; margin-bottom: 18px; }
-        .upload-card h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
-        .upload-card p { color: var(--text-muted); font-size: 13px; margin-bottom: 22px; }
-        .file-selected { color: var(--accent-blue); font-size: 13px; margin-top: 10px; font-weight: 500; display: none; }
-        .btn-choose {
-            background: var(--border);
-            color: var(--text-primary);
+
+        .upload-hero h2 {
+            font-size: 34px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1.1;
+            margin-bottom: 10px;
+        }
+        .upload-hero h2 span { color: var(--accent); }
+        .upload-hero p { color: var(--text-2); font-size: 15px; }
+
+        .upload-box {
+            background: var(--card);
+            border: 1.5px dashed var(--border-2);
+            border-radius: 20px;
+            padding: 52px 60px;
+            width: 440px;
+            text-align: center;
+            transition: border-color .2s, background .2s;
+        }
+        .upload-box:hover, .upload-box.over {
+            border-color: var(--accent);
+            background: rgba(0,212,170,.03);
+        }
+
+        .upload-ico { font-size: 46px; display: block; margin-bottom: 18px; }
+
+        .upload-box h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .upload-box p { font-size: 13px; color: var(--text-2); margin-bottom: 22px; }
+
+        .btn-pick {
+            background: var(--border-2);
+            color: var(--text);
             border: none;
             padding: 9px 22px;
             border-radius: 8px;
             cursor: pointer;
             font-size: 13px;
-            transition: background 0.15s;
+            font-family: 'DM Sans', sans-serif;
+            transition: background .15s;
         }
-        .btn-choose:hover { background: #475569; }
-        .btn-analyze {
-            background: var(--accent-blue);
-            color: white;
+        .btn-pick:hover { background: #2d3748; }
+
+        .picked-name {
+            font-size: 12px;
+            color: var(--accent);
+            margin-top: 12px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .btn-go {
+            width: 100%;
+            margin-top: 20px;
+            padding: 13px;
+            background: var(--accent);
+            color: #07090f;
             border: none;
-            padding: 13px 0;
             border-radius: 10px;
             font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
+            font-family: 'Syne', sans-serif;
             cursor: pointer;
-            margin-top: 20px;
-            width: 100%;
-            transition: background 0.15s;
+            letter-spacing: -.2px;
+            transition: background .15s, transform .1s;
         }
-        .btn-analyze:hover { background: #2563eb; }
-        .btn-analyze:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+        .btn-go:hover { background: #00bfa0; }
+        .btn-go:active { transform: scale(.98); }
+        .btn-go:disabled { background: var(--border); color: var(--text-3); cursor: not-allowed; transform: none; }
 
-        /* ── Loading ── */
-        #loading-screen {
+        /* ────────────────────────────────────────
+           LOADING SCREEN
+        ──────────────────────────────────────── */
+        #scr-loading {
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: calc(100vh - 65px);
+            min-height: calc(100vh - 63px);
             text-align: center;
         }
-        .loader-ring {
-            width: 60px; height: 60px;
-            border: 4px solid var(--border);
-            border-top-color: var(--accent-blue);
+
+        .ring-wrap {
+            position: relative;
+            width: 72px; height: 72px;
+            margin-bottom: 26px;
+        }
+        .ring {
+            width: 72px; height: 72px;
+            border: 3px solid var(--border-2);
+            border-top-color: var(--accent);
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-bottom: 22px;
+            animation: spin .9s linear infinite;
+        }
+        .ring-inner {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-text { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
-        .loading-sub { color: var(--text-muted); font-size: 13px; }
 
-        /* ── Dashboard ── */
-        #dashboard-screen { display: none; }
+        .load-title { font-size: 19px; font-weight: 700; font-family: 'Syne', sans-serif; margin-bottom: 6px; }
+        .load-sub { font-size: 13px; color: var(--text-2); max-width: 300px; }
 
-        /* Tabs */
-        .tabs {
+        .dots {
+            display: flex; gap: 5px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        .dots span {
+            width: 7px; height: 7px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: blink 1.4s ease-in-out infinite;
+        }
+        .dots span:nth-child(2) { animation-delay: .22s; }
+        .dots span:nth-child(3) { animation-delay: .44s; }
+        @keyframes blink {
+            0%,80%,100% { transform:scale(.55); opacity:.35; }
+            40%          { transform:scale(1);   opacity:1;   }
+        }
+
+        /* ────────────────────────────────────────
+           DASHBOARD
+        ──────────────────────────────────────── */
+        #scr-dash { display: none; }
+
+        .sec { margin-bottom: 24px; }
+
+        .sec-hdr {
             display: flex;
-            gap: 3px;
-            margin-bottom: 24px;
-            background: var(--bg-card);
-            padding: 5px;
-            border-radius: 10px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .section-ttl { font-size: 14.5px; font-weight: 700; letter-spacing: -.2px; }
+        .sec-tag {
+            font-size: 11px;
+            background: var(--border);
+            color: var(--text-2);
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        /* ── Metric strip ── */
+        .metric-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border);
             border: 1px solid var(--border);
-            width: fit-content;
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 20px;
         }
-        .tab {
-            padding: 7px 18px;
-            border-radius: 7px;
-            cursor: pointer;
-            font-size: 13px;
-            color: var(--text-muted);
-            transition: all 0.15s;
-            white-space: nowrap;
+
+        .m-block {
+            background: var(--card);
+            padding: 20px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
         }
-        .tab.active { background: var(--accent-blue); color: white; font-weight: 600; }
-        .tab:hover:not(.active) { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+        .m-lbl {
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: var(--text-3);
+            font-weight: 600;
+        }
+        .metric-val {
+            font-size: 30px;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            line-height: 1;
+        }
+        .m-unit { font-size: 11px; color: var(--text-2); }
 
-        .tab-page { display: none; }
-        .tab-page.active { display: block; }
+        .m-block:nth-child(1) .metric-val { color: var(--accent); }
+        .m-block:nth-child(2) .metric-val { color: var(--blue);   }
+        .m-block:nth-child(3) .metric-val { color: var(--amber);  }
+        .m-block:nth-child(4) .metric-val { color: var(--purple); }
 
-        /* KPI Grid */
+        /* ── KPI cards ── */
         .kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 18px;
-            margin-bottom: 24px;
+            gap: 14px;
+            margin-bottom: 20px;
         }
+
         .kpi-card {
-            background: var(--bg-card);
+            background: var(--card);
             border: 1px solid var(--border);
             border-radius: 14px;
-            padding: 20px 22px;
+            padding: 20px 20px 16px;
             position: relative;
             overflow: hidden;
+            cursor: default;
+            transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
         }
         .kpi-card::before {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0;
             height: 3px;
-            border-radius: 14px 14px 0 0;
         }
-        .kpi-card.blue::before { background: var(--accent-blue); }
-        .kpi-card.green::before { background: var(--accent-green); }
-        .kpi-card.yellow::before { background: var(--accent-yellow); }
-        .kpi-card.purple::before { background: var(--accent-purple); }
-        .kpi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; font-weight: 600; }
-        .kpi-value { font-size: 26px; font-weight: 800; margin-bottom: 3px; line-height: 1; }
-        .kpi-unit { font-size: 11px; color: var(--text-secondary); }
-        .kpi-trend {
+        .kpi-card:hover { transform: translateY(-3px); }
+
+        .kpi-card.ka::before { background: var(--accent); }
+        .kpi-card.ka:hover   { border-color: rgba(0,212,170,.28); box-shadow: 0 14px 40px rgba(0,212,170,.1); }
+
+        .kpi-card.kb::before { background: var(--blue); }
+        .kpi-card.kb:hover   { border-color: rgba(59,130,246,.28); box-shadow: 0 14px 40px rgba(59,130,246,.1); }
+
+        .kpi-card.kc::before { background: var(--amber); }
+        .kpi-card.kc:hover   { border-color: rgba(245,158,11,.28); box-shadow: 0 14px 40px rgba(245,158,11,.1); }
+
+        .kpi-card.kd::before { background: var(--purple); }
+        .kpi-card.kd:hover   { border-color: rgba(139,92,246,.28); box-shadow: 0 14px 40px rgba(139,92,246,.1); }
+
+        .kpi-lbl {
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: var(--text-2);
+            font-weight: 600;
+            margin-bottom: 9px;
+        }
+        .kpi-val {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            line-height: 1;
+            margin-bottom: 3px;
+        }
+        .kpi-unit { font-size: 11.5px; color: var(--text-2); }
+        .kpi-foot {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 12px;
+            padding-top: 11px;
+            border-top: 1px solid var(--border);
+        }
+
+        .trend {
             display: inline-flex;
             align-items: center;
             gap: 3px;
             font-size: 11px;
             font-weight: 600;
-            margin-top: 10px;
-            padding: 3px 8px;
+            padding: 2px 8px;
             border-radius: 20px;
         }
-        .kpi-trend.positiva { background: rgba(16,185,129,0.15); color: var(--accent-green); }
-        .kpi-trend.negativa { background: rgba(239,68,68,0.15); color: var(--accent-red); }
-        .kpi-trend.neutral { background: rgba(148,163,184,0.12); color: var(--text-secondary); }
+        .trend.up   { background: rgba(16,185,129,.12); color: var(--green); }
+        .trend.down { background: rgba(239,68,68,.12);  color: var(--red);   }
+        .trend.flat { background: rgba(148,163,184,.1); color: var(--text-2);}
 
-        /* Resumen card */
-        .resumen-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
+        .trend-lbl { font-size: 11px; color: var(--text-3); }
+
+        /* ── Conclusion card (dark green) ── */
+        .concl-card {
+            background: linear-gradient(135deg, rgba(0,212,170,.08) 0%, rgba(0,168,138,.04) 100%);
+            border: 1px solid rgba(0,212,170,.2);
             border-radius: 14px;
-            padding: 22px 24px;
-            margin-bottom: 24px;
+            padding: 22px 26px 22px 30px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
         }
-        .resumen-card p { color: var(--text-secondary); line-height: 1.7; font-size: 14px; }
+        .concl-card::before {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 4px;
+            background: linear-gradient(to bottom, var(--accent), #00896c);
+        }
 
-        /* Charts */
-        .charts-grid {
+        .concl-ttl {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'Syne', sans-serif;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 9px;
+        }
+        .concl-body {
+            font-size: 14px;
+            color: rgba(238,242,255,.72);
+            line-height: 1.72;
+        }
+
+        /* ── Charts row ── */
+        .charts-row {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 18px;
-            margin-bottom: 24px;
+            grid-template-columns: 1.35fr 1fr;
+            gap: 14px;
+            margin-bottom: 20px;
         }
+
         .chart-card {
-            background: var(--bg-card);
+            background: var(--card);
             border: 1px solid var(--border);
             border-radius: 14px;
-            padding: 22px 24px;
+            padding: 20px 22px;
         }
-        .chart-card.full { grid-column: 1 / -1; }
-        .chart-title { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
-        .chart-subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 18px; }
+        .chart-ttl { font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif; margin-bottom: 2px; }
+        .chart-sub { font-size: 12px; color: var(--text-2); margin-bottom: 18px; }
 
-        /* Section */
-        .section { margin-bottom: 24px; }
-        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-        .section-title { font-size: 15px; font-weight: 700; }
-        .section-badge {
-            font-size: 11px;
+        /* ── Route efficiency ── */
+        .route-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px 22px;
+            margin-bottom: 20px;
+        }
+
+        .route-list { display: flex; flex-direction: column; gap: 14px; }
+
+        .route-row { display: flex; flex-direction: column; gap: 6px; }
+
+        .route-hdr {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .route-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 240px;
+        }
+        .route-meta { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+        .route-cost { font-size: 13px; font-weight: 600; font-family: 'Syne', sans-serif; }
+
+        .efic {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 9px;
+            border-radius: 20px;
+            text-transform: capitalize;
+        }
+        .efic.alta  { background: rgba(16,185,129,.14); color: var(--green); }
+        .efic.media { background: rgba(245,158,11,.14);  color: var(--amber); }
+        .efic.baja  { background: rgba(239,68,68,.14);   color: var(--red);   }
+
+        .bar-track {
+            width: 100%;
+            height: 6px;
             background: var(--border);
-            color: var(--text-secondary);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width .7s cubic-bezier(.4,0,.2,1);
+        }
+        .bar-fill.alta  { background: linear-gradient(90deg, #10b981, #34d399); }
+        .bar-fill.media { background: linear-gradient(90deg, #f59e0b, #fcd34d); }
+        .bar-fill.baja  { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+        /* ── Units table ── */
+        .table-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .table-hdr {
+            padding: 16px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dtable { width: 100%; border-collapse: collapse; }
+        .dtable th {
+            padding: 10px 18px;
+            text-align: left;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: var(--text-3);
+            font-weight: 600;
+            background: rgba(255,255,255,.01);
+            border-bottom: 1px solid var(--border);
+        }
+        .dtable td {
+            padding: 13px 18px;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(26,32,48,.7);
+            color: var(--text-2);
+        }
+        .dtable tr:last-child td { border-bottom: none; }
+        .dtable tr:hover td { background: rgba(255,255,255,.013); }
+        .dtable .td-name { color: var(--text); font-weight: 500; }
+
+        .sbadge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11.5px;
+            font-weight: 600;
             padding: 3px 10px;
             border-radius: 20px;
         }
+        .sbadge.hi  { background: rgba(16,185,129,.12); color: var(--green); }
+        .sbadge.mid { background: rgba(245,158,11,.12);  color: var(--amber); }
+        .sbadge.lo  { background: rgba(239,68,68,.12);   color: var(--red);   }
 
-        /* Table */
-        .table-card {
-            background: var(--bg-card);
+        /* ── Alerts grid ── */
+        .alerts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .alert-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px 17px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            border-left: 3px solid var(--border);
+            transition: border-color .15s;
+        }
+        .alert-card:hover { border-color: var(--border-2); }
+        .alert-card.critica    { border-left-color: var(--red);   }
+        .alert-card.advertencia{ border-left-color: var(--amber); }
+        .alert-card.info       { border-left-color: var(--blue);  }
+
+        .alert-ico {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .alert-ico.critica     { background: rgba(239,68,68,.12); }
+        .alert-ico.advertencia { background: rgba(245,158,11,.12);}
+        .alert-ico.info        { background: rgba(59,130,246,.12);}
+
+        .alert-body { flex: 1; min-width: 0; }
+        .alert-tipo {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 3px;
+        }
+        .alert-tipo.critica     { color: var(--red);   }
+        .alert-tipo.advertencia { color: var(--amber); }
+        .alert-tipo.info        { color: var(--blue);  }
+
+        .alert-ttl { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+        .alert-desc { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+        .alert-unit { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+        /* ── Recommendations ── */
+        .rec-wrap {
+            background: var(--card);
             border: 1px solid var(--border);
             border-radius: 14px;
             overflow: hidden;
         }
-        .data-table { width: 100%; border-collapse: collapse; }
-        .data-table th {
-            padding: 11px 18px;
-            text-align: left;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--text-muted);
-            background: rgba(255,255,255,0.02);
-            border-bottom: 1px solid var(--border);
-            font-weight: 600;
-        }
-        .data-table td {
-            padding: 13px 18px;
-            font-size: 13px;
-            border-bottom: 1px solid rgba(51,65,85,0.5);
-            color: var(--text-secondary);
-        }
-        .data-table tr:last-child td { border-bottom: none; }
-        .data-table tr:hover td { background: rgba(255,255,255,0.02); }
-        .data-table td:first-child { color: var(--text-primary); font-weight: 500; }
-
-        .badge-efic {
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: capitalize;
-        }
-        .badge-efic.alta { background: rgba(16,185,129,0.15); color: var(--accent-green); }
-        .badge-efic.media { background: rgba(245,158,11,0.15); color: var(--accent-yellow); }
-        .badge-efic.baja { background: rgba(239,68,68,0.15); color: var(--accent-red); }
-
-        /* Alerts */
-        .alerts-grid { display: flex; flex-direction: column; gap: 10px; }
-        .alert-item {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-left: 4px solid var(--border);
-            border-radius: 10px;
-            padding: 14px 18px;
+        .rec-item {
             display: flex;
             align-items: flex-start;
-            gap: 12px;
+            gap: 13px;
+            padding: 17px 22px;
+            border-bottom: 1px solid var(--border);
+            transition: background .15s;
         }
-        .alert-item.critica { border-left-color: var(--accent-red); }
-        .alert-item.advertencia { border-left-color: var(--accent-yellow); }
-        .alert-item.info { border-left-color: var(--accent-blue); }
-        .alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
-        .alert-title { font-size: 13.5px; font-weight: 600; margin-bottom: 3px; }
-        .alert-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
-        .alert-unit { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        .rec-item:last-child { border-bottom: none; }
+        .rec-item:hover { background: rgba(255,255,255,.013); }
 
-        /* Recomendaciones */
-        .rec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-        .rec-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 18px 20px;
+        .rec-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 5px;
         }
-        .rec-priority {
+        .rec-dot.alta  { background: var(--red);    box-shadow: 0 0 7px rgba(239,68,68,.5); }
+        .rec-dot.media { background: var(--amber);  box-shadow: 0 0 7px rgba(245,158,11,.5); }
+        .rec-dot.baja  { background: var(--accent); box-shadow: 0 0 7px rgba(0,212,170,.5); }
+
+        .rec-body { flex: 1; }
+        .rec-pri {
             font-size: 10px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.07em;
-            margin-bottom: 8px;
+            letter-spacing: .06em;
+            margin-bottom: 3px;
         }
-        .rec-priority.alta { color: var(--accent-red); }
-        .rec-priority.media { color: var(--accent-yellow); }
-        .rec-priority.baja { color: var(--accent-green); }
-        .rec-title { font-size: 13.5px; font-weight: 600; margin-bottom: 7px; }
-        .rec-desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; }
-        .rec-saving { margin-top: 12px; font-size: 12px; color: var(--accent-green); font-weight: 600; }
+        .rec-pri.alta  { color: var(--red);    }
+        .rec-pri.media { color: var(--amber);  }
+        .rec-pri.baja  { color: var(--accent); }
+
+        .rec-ttl {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+            font-family: 'Syne', sans-serif;
+        }
+        .rec-desc { font-size: 12.5px; color: var(--text-2); line-height: 1.55; }
+        .rec-save { font-size: 12px; color: var(--accent); font-weight: 600; margin-top: 6px; }
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="sidebar-logo">
-            <span>🚛</span>
-            <h1>LogiAnalytics</h1>
-            <div class="logo-badge">v2</div>
-        </div>
-        <nav class="sidebar-nav">
-            <div class="nav-section-title">Análisis</div>
-            <div class="nav-item active" data-tab="tab-overview" onclick="navTo(this)">
-                <span class="nav-icon">📊</span> Resumen
-            </div>
-            <div class="nav-item" data-tab="tab-overview" onclick="navTo(this)">
-                <span class="nav-icon">🎯</span> KPIs
-            </div>
-            <div class="nav-item" data-tab="tab-rutas" onclick="navTo(this)">
-                <span class="nav-icon">🗺️</span> Rutas
-            </div>
-            <div class="nav-item" data-tab="tab-unidades" onclick="navTo(this)">
-                <span class="nav-icon">🚚</span> Unidades
-            </div>
-            <div class="nav-section-title" style="margin-top:8px">Operaciones</div>
-            <div class="nav-item" data-tab="tab-overview" onclick="navTo(this)">
-                <span class="nav-icon">💰</span> Costos
-            </div>
-            <div class="nav-item" data-tab="tab-overview" onclick="navTo(this)">
-                <span class="nav-icon">📅</span> Períodos
-            </div>
-            <div class="nav-item" data-tab="tab-alertas" onclick="navTo(this)">
-                <span class="nav-icon">🔔</span> Alertas
-                <span class="nav-badge" id="alert-badge"></span>
-            </div>
-            <div class="nav-item" data-tab="tab-alertas" onclick="navTo(this)">
-                <span class="nav-icon">💡</span> Recomendaciones
-            </div>
-        </nav>
-        <div class="sidebar-footer">LogiAnalytics © 2025</div>
-    </aside>
 
-    <!-- Main -->
-    <main class="main">
-        <div class="topbar">
-            <div>
-                <div class="topbar-title" id="topbar-title">Dashboard de Flota</div>
-                <div class="topbar-sub" id="topbar-sub">Sube un archivo Excel para comenzar</div>
-            </div>
-            <div class="topbar-actions">
-                <button class="btn-action" onclick="nuevaConsulta()">↩ Nueva consulta</button>
-                <button class="btn-action btn-primary-action" id="btn-pdf" onclick="exportarPDF()" style="display:none">⬇ Exportar PDF</button>
-            </div>
+<!-- ══════════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════════ -->
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="logo-icon">🚛</div>
+        <div class="sidebar-brand">Logi<em>Analytics</em></div>
+        <div class="sidebar-ver">v2</div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-group">Análisis</div>
+
+        <div class="nav-item active" onclick="navClick(this,'sec-resumen')">
+            <span class="nav-ico">📊</span>Resumen
+        </div>
+        <div class="nav-item" onclick="navClick(this,'sec-kpis')">
+            <span class="nav-ico">🎯</span>KPIs
+        </div>
+        <div class="nav-item" onclick="navClick(this,'sec-rutas')">
+            <span class="nav-ico">🗺️</span>Rutas
+        </div>
+        <div class="nav-item" onclick="navClick(this,'sec-unidades')">
+            <span class="nav-ico">🚚</span>Unidades
         </div>
 
-        <div class="content">
-            <!-- Upload -->
-            <div id="upload-screen">
-                <div class="upload-hero">
-                    <h2>Analiza tu flota con IA</h2>
-                    <p>Sube tu archivo Excel y obtén un dashboard completo en segundos</p>
-                </div>
-                <div class="upload-card" id="drop-zone">
-                    <div class="upload-icon">📊</div>
-                    <h3>Selecciona tu archivo Excel</h3>
-                    <p>Arrastra y suelta aquí, o haz clic para seleccionar<br>Formato: .xlsx</p>
-                    <input type="file" id="archivo" accept=".xlsx,.xls" style="display:none" onchange="onFileSelect(this)">
-                    <button class="btn-choose" onclick="document.getElementById('archivo').click()">Elegir archivo .xlsx</button>
-                    <div class="file-selected" id="file-name"></div>
-                    <button class="btn-analyze" id="btn-analizar" onclick="analizar()" disabled>Analizar con IA →</button>
-                </div>
-            </div>
+        <div class="nav-group" style="margin-top:8px">Operaciones</div>
 
-            <!-- Loading -->
-            <div id="loading-screen">
-                <div class="loader-ring"></div>
-                <div class="loading-text">Analizando tu flota...</div>
-                <div class="loading-sub">La IA está procesando los datos. Esto puede tomar unos segundos.</div>
-            </div>
+        <div class="nav-item" onclick="navClick(this,'sec-alertas')">
+            <span class="nav-ico">🔔</span>Alertas
+            <span class="nav-pill danger" id="alert-pill" style="display:none"></span>
+        </div>
+        <div class="nav-item" onclick="navClick(this,'sec-recs')">
+            <span class="nav-ico">💡</span>Recomendaciones
+        </div>
+    </nav>
 
-            <!-- Dashboard -->
-            <div id="dashboard-screen">
-                <div class="tabs">
-                    <div class="tab active" onclick="showTab('tab-overview', this)">Vista General</div>
-                    <div class="tab" onclick="showTab('tab-rutas', this)">Rutas</div>
-                    <div class="tab" onclick="showTab('tab-unidades', this)">Unidades</div>
-                    <div class="tab" onclick="showTab('tab-alertas', this)">Alertas & Recomendaciones</div>
-                </div>
-
-                <!-- Tab: Overview -->
-                <div id="tab-overview" class="tab-page active">
-                    <div class="resumen-card">
-                        <div class="section-header" style="margin-bottom:10px">
-                            <div class="section-title">📋 Resumen Ejecutivo</div>
-                        </div>
-                        <p id="resumen-text"></p>
-                    </div>
-                    <div class="kpi-grid" id="kpi-grid"></div>
-                    <div class="charts-grid">
-                        <div class="chart-card">
-                            <div class="chart-title">Viajes por Período</div>
-                            <div class="chart-subtitle">Volumen de operaciones en el tiempo</div>
-                            <canvas id="chart-periodos" height="230"></canvas>
-                        </div>
-                        <div class="chart-card">
-                            <div class="chart-title">Costos por Categoría</div>
-                            <div class="chart-subtitle">Distribución del gasto operativo</div>
-                            <canvas id="chart-costos" height="230"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab: Rutas -->
-                <div id="tab-rutas" class="tab-page">
-                    <div class="charts-grid" style="margin-bottom:20px">
-                        <div class="chart-card">
-                            <div class="chart-title">Costo/Km por Ruta</div>
-                            <div class="chart-subtitle">Eficiencia comparativa — verde=alta, amarillo=media, rojo=baja</div>
-                            <canvas id="chart-rutas-cost" height="230"></canvas>
-                        </div>
-                        <div class="chart-card">
-                            <div class="chart-title">Viajes por Ruta</div>
-                            <div class="chart-subtitle">Frecuencia de operación</div>
-                            <canvas id="chart-rutas-viajes" height="230"></canvas>
-                        </div>
-                    </div>
-                    <div class="section">
-                        <div class="section-header">
-                            <div class="section-title">Tabla de Eficiencia por Ruta</div>
-                            <div class="section-badge" id="rutas-count"></div>
-                        </div>
-                        <div class="table-card">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Ruta</th>
-                                        <th>Viajes</th>
-                                        <th>Km Promedio</th>
-                                        <th>Costo Promedio</th>
-                                        <th>Costo/Km</th>
-                                        <th>Eficiencia</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="rutas-tbody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab: Unidades -->
-                <div id="tab-unidades" class="tab-page">
-                    <div class="charts-grid" style="margin-bottom:20px">
-                        <div class="chart-card full">
-                            <div class="chart-title">Rendimiento por Unidad</div>
-                            <div class="chart-subtitle">Score de eficiencia (barras) y km totales (línea)</div>
-                            <canvas id="chart-unidades" height="190"></canvas>
-                        </div>
-                    </div>
-                    <div class="section">
-                        <div class="section-header">
-                            <div class="section-title">Detalle de Unidades</div>
-                            <div class="section-badge" id="unidades-count"></div>
-                        </div>
-                        <div class="table-card">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Unidad</th>
-                                        <th>Viajes</th>
-                                        <th>Km Total</th>
-                                        <th>Costo Total</th>
-                                        <th>Score Eficiencia</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="unidades-tbody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab: Alertas & Rec -->
-                <div id="tab-alertas" class="tab-page">
-                    <div class="section">
-                        <div class="section-header">
-                            <div class="section-title">🔔 Alertas Operativas</div>
-                            <div class="section-badge" id="alertas-count"></div>
-                        </div>
-                        <div class="alerts-grid" id="alerts-container"></div>
-                    </div>
-                    <div class="section" style="margin-top:24px">
-                        <div class="section-header">
-                            <div class="section-title">💡 Recomendaciones</div>
-                        </div>
-                        <div class="rec-grid" id="rec-container"></div>
-                    </div>
-                    <div class="resumen-card" style="margin-top:20px; margin-bottom:0">
-                        <div class="section-header" style="margin-bottom:10px">
-                            <div class="section-title">📌 Conclusiones</div>
-                        </div>
-                        <p id="conclusiones-text"></p>
-                    </div>
-                </div>
+    <div class="client-card">
+        <div class="client-top">
+            <div class="client-ava">🏢</div>
+            <div class="client-info">
+                <div class="client-name" id="cli-name">Sin sesión</div>
+                <div class="client-file" id="cli-file">—</div>
             </div>
         </div>
-    </main>
+        <div class="client-status">
+            <div class="status-dot" id="st-dot" style="background:var(--text-3)"></div>
+            <span id="st-lbl" style="color:var(--text-3)">Inactivo</span>
+        </div>
+    </div>
+</aside>
 
-    <script>
-        let charts = {};
+<!-- ══════════════════════════════════════════
+     MAIN
+══════════════════════════════════════════ -->
+<main class="main">
+    <header class="topbar">
+        <div>
+            <div class="topbar-title syne" id="tp-title">Dashboard de Flota</div>
+            <div class="topbar-sub" id="tp-sub">Análisis inteligente de operaciones logísticas</div>
+        </div>
+        <div class="topbar-actions">
+            <button class="btn btn-ghost" onclick="resetear()">↩ Nueva consulta</button>
+            <button class="btn btn-main" id="btn-pdf" onclick="exportPDF()" style="display:none">⬇ Exportar PDF</button>
+        </div>
+    </header>
 
-        // Nav sidebar
-        function navTo(el) {
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            el.classList.add('active');
-            const tab = el.dataset.tab;
-            if (tab) showTab(tab, null);
+    <div class="content">
+
+        <!-- ── UPLOAD ── -->
+        <div id="scr-upload">
+            <div class="upload-hero">
+                <div class="hero-badge">✦ Análisis con IA</div>
+                <h2>Analiza tu flota con <span>inteligencia</span></h2>
+                <p>Sube tu Excel y obtén un dashboard completo en segundos</p>
+            </div>
+            <div class="upload-box" id="drop">
+                <span class="upload-ico">📊</span>
+                <h3>Selecciona tu archivo Excel</h3>
+                <p>Arrastra y suelta aquí, o haz clic<br>Formatos: .xlsx · .xls</p>
+                <input type="file" id="fi" accept=".xlsx,.xls" style="display:none" onchange="onPick(this)">
+                <button class="btn-pick" onclick="document.getElementById('fi').click()">Elegir archivo</button>
+                <div class="picked-name" id="fname"></div>
+                <button class="btn-go" id="btn-go" onclick="analizar()" disabled>Analizar con IA →</button>
+            </div>
+        </div>
+
+        <!-- ── LOADING ── -->
+        <div id="scr-loading">
+            <div class="ring-wrap">
+                <div class="ring"></div>
+                <div class="ring-inner">🚛</div>
+            </div>
+            <div class="load-title">Analizando tu flota...</div>
+            <div class="load-sub">La IA está procesando los datos. Toma unos segundos.</div>
+            <div class="dots"><span></span><span></span><span></span></div>
+        </div>
+
+        <!-- ── DASHBOARD ── -->
+        <div id="scr-dash">
+
+            <!-- 1. Metric strip -->
+            <div id="sec-resumen" class="metric-strip">
+                <div class="m-block">
+                    <div class="m-lbl">Total Viajes</div>
+                    <div class="metric-val" id="mv1">—</div>
+                    <div class="m-unit">viajes registrados</div>
+                </div>
+                <div class="m-block">
+                    <div class="m-lbl">Costo Total</div>
+                    <div class="metric-val" id="mv2">—</div>
+                    <div class="m-unit">MXN acumulado</div>
+                </div>
+                <div class="m-block">
+                    <div class="m-lbl">Km Totales</div>
+                    <div class="metric-val" id="mv3">—</div>
+                    <div class="m-unit">kilómetros recorridos</div>
+                </div>
+                <div class="m-block">
+                    <div class="m-lbl">Unidades</div>
+                    <div class="metric-val" id="mv4">—</div>
+                    <div class="m-unit">vehículos activos</div>
+                </div>
+            </div>
+
+            <!-- 2. KPI cards -->
+            <div id="sec-kpis" class="kpi-grid sec"></div>
+
+            <!-- 3. Conclusión ejecutiva -->
+            <div class="concl-card sec">
+                <div class="concl-ttl"><span>✦</span>Conclusión Ejecutiva</div>
+                <div class="concl-body" id="concl-txt">—</div>
+            </div>
+
+            <!-- 4. Charts -->
+            <div class="charts-row sec">
+                <div class="chart-card">
+                    <div class="chart-ttl">Actividad Mensual</div>
+                    <div class="chart-sub">Viajes por período</div>
+                    <canvas id="ch-monthly" height="230"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-ttl">Distribución de Costos</div>
+                    <div class="chart-sub">Desglose por categoría</div>
+                    <canvas id="ch-costs" height="230"></canvas>
+                </div>
+            </div>
+
+            <!-- 5. Route efficiency -->
+            <div id="sec-rutas" class="route-card sec">
+                <div class="sec-hdr">
+                    <div class="section-ttl">Eficiencia por Ruta</div>
+                    <div class="sec-tag" id="rutas-tag">0 rutas</div>
+                </div>
+                <div class="route-list" id="route-list"></div>
+            </div>
+
+            <!-- 6. Units table -->
+            <div id="sec-unidades" class="table-card sec">
+                <div class="table-hdr">
+                    <div class="section-ttl">Unidades — Rendimiento</div>
+                    <div class="sec-tag" id="units-tag">0 unidades</div>
+                </div>
+                <table class="dtable">
+                    <thead>
+                        <tr>
+                            <th>Unidad</th>
+                            <th>Viajes</th>
+                            <th>Km Total</th>
+                            <th>Costo Total</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="units-tbody"></tbody>
+                </table>
+            </div>
+
+            <!-- 7. Alerts -->
+            <div id="sec-alertas" class="sec">
+                <div class="sec-hdr">
+                    <div class="section-ttl">Alertas Operativas</div>
+                    <div class="sec-tag" id="alert-tag">0 alertas</div>
+                </div>
+                <div class="alerts-grid" id="alerts-grid"></div>
+            </div>
+
+            <!-- 8. Recommendations -->
+            <div id="sec-recs" class="sec">
+                <div class="sec-hdr">
+                    <div class="section-ttl">Recomendaciones</div>
+                </div>
+                <div class="rec-wrap">
+                    <div id="rec-list"></div>
+                </div>
+            </div>
+
+        </div><!-- /scr-dash -->
+    </div><!-- /content -->
+</main>
+
+<script>
+'use strict';
+
+const PALETTE = ['#00d4aa','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899','#84cc16'];
+let charts = {};
+
+/* ── Screens ── */
+function show(id) {
+    ['scr-upload','scr-loading','scr-dash'].forEach(s => {
+        const el = document.getElementById(s);
+        if (s === id) {
+            el.style.display = (s === 'scr-loading') ? 'flex' : (s === 'scr-upload') ? 'flex' : 'block';
+        } else {
+            el.style.display = 'none';
         }
+    });
+}
 
-        // Tabs
-        function showTab(id, tabEl) {
-            document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            if (tabEl) {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                tabEl.classList.add('active');
+/* ── File pick ── */
+function onPick(input) {
+    const f = input.files[0];
+    if (!f) return;
+    const fn = document.getElementById('fname');
+    fn.textContent = '📎 ' + f.name;
+    fn.style.display = 'block';
+    document.getElementById('btn-go').disabled = false;
+    document.getElementById('cli-name').textContent = f.name.replace(/\.[^.]+$/, '');
+    document.getElementById('cli-file').textContent = f.name;
+}
+
+/* Drag & drop */
+const drop = document.getElementById('drop');
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => {
+    e.preventDefault();
+    drop.classList.remove('over');
+    const f = e.dataTransfer.files[0];
+    if (f) {
+        const dt = new DataTransfer(); dt.items.add(f);
+        document.getElementById('fi').files = dt.files;
+        onPick(document.getElementById('fi'));
+    }
+});
+
+/* ── Analyze ── */
+async function analizar() {
+    const f = document.getElementById('fi').files[0];
+    if (!f) return;
+    show('scr-loading');
+    const fd = new FormData(); fd.append('archivo', f);
+    try {
+        const r = await fetch('/analizar', { method: 'POST', body: fd });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        if (data.error) throw new Error(data.error);
+        renderDash(data);
+    } catch (e) {
+        show('scr-upload');
+        alert('Error: ' + e.message);
+    }
+}
+
+/* ── Reset ── */
+function resetear() {
+    show('scr-upload');
+    document.getElementById('btn-pdf').style.display = 'none';
+    document.getElementById('tp-sub').textContent = 'Análisis inteligente de operaciones logísticas';
+    document.getElementById('fi').value = '';
+    document.getElementById('fname').style.display = 'none';
+    document.getElementById('btn-go').disabled = true;
+    document.getElementById('cli-name').textContent = 'Sin sesión';
+    document.getElementById('cli-file').textContent = '—';
+    setSt('inactive');
+    Object.values(charts).forEach(c => c.destroy());
+    charts = {};
+}
+
+function setSt(state) {
+    const dot = document.getElementById('st-dot');
+    const lbl = document.getElementById('st-lbl');
+    if (state === 'active') {
+        dot.style.background = 'var(--accent)';
+        lbl.style.color = 'var(--accent)';
+        lbl.textContent = 'Sesión activa';
+    } else {
+        dot.style.background = 'var(--text-3)';
+        lbl.style.color = 'var(--text-3)';
+        lbl.textContent = 'Inactivo';
+    }
+}
+
+/* ── Nav ── */
+function navClick(el, secId) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+    const sec = document.getElementById(secId);
+    if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── Number formatting ── */
+function fmt(n) { return Number(n).toLocaleString('es-MX'); }
+function fmtS(n) {
+    n = Number(n);
+    if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+    return fmt(n);
+}
+
+/* ── Render dashboard ── */
+function renderDash(d) {
+    show('scr-dash');
+    document.getElementById('btn-pdf').style.display = 'inline-flex';
+    document.getElementById('tp-sub').textContent =
+        'Actualizado ' + new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+    setSt('active');
+
+    const kpis = d.kpis || [];
+
+    /* Metric strip */
+    document.getElementById('mv1').textContent = kpis[0] ? fmtS(kpis[0].valor) : '—';
+    document.getElementById('mv2').textContent = kpis[1] ? '$' + fmtS(kpis[1].valor) : '—';
+    document.getElementById('mv3').textContent = kpis[2] ? fmtS(kpis[2].valor) : '—';
+    document.getElementById('mv4').textContent = (d.unidades_rendimiento || []).length || '—';
+
+    /* KPI cards */
+    const colors = ['ka','kb','kc','kd'];
+    const tc = t => t==='positiva'?'up':t==='negativa'?'down':'flat';
+    const ta = t => t==='positiva'?'↑':t==='negativa'?'↓':'→';
+    const grid = document.getElementById('sec-kpis');
+    grid.innerHTML = '';
+    kpis.slice(0,4).forEach((k,i) => {
+        grid.innerHTML += `<div class="kpi-card ${colors[i]}">
+            <div class="kpi-lbl">${k.titulo}</div>
+            <div class="kpi-val">${fmtS(k.valor)}</div>
+            <div class="kpi-unit">${k.unidad}</div>
+            <div class="kpi-foot">
+                <span class="trend ${tc(k.tendencia)}">${ta(k.tendencia)} ${k.cambio||''}</span>
+                <span class="trend-lbl">vs período anterior</span>
+            </div>
+        </div>`;
+    });
+
+    /* Conclusion */
+    document.getElementById('concl-txt').textContent = d.conclusiones || d.resumen || '—';
+
+    /* Charts */
+    buildMonthly(d.viajes_por_periodo || []);
+    buildDonut(d.costos_por_categoria || []);
+
+    /* Route bars */
+    buildRoutes(d.rutas_eficiencia || []);
+
+    /* Units table */
+    buildUnits(d.unidades_rendimiento || []);
+
+    /* Alerts */
+    buildAlerts(d.alertas || []);
+
+    /* Recs */
+    buildRecs(d.recomendaciones || []);
+}
+
+/* ── Chart: monthly bars ── */
+function buildMonthly(data) {
+    if (charts.m) charts.m.destroy();
+    const ctx = document.getElementById('ch-monthly').getContext('2d');
+    const n = data.length;
+    charts.m = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.periodo),
+            datasets: [{
+                label: 'Viajes',
+                data: data.map(d => d.viajes),
+                backgroundColor: data.map((_,i) => i===n-1
+                    ? 'rgba(0,212,170,.9)'
+                    : 'rgba(0,212,170,.28)'),
+                borderRadius: 6,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: tooltipCfg()
+            },
+            scales: {
+                x: axCfg(),
+                y: axCfg()
             }
         }
+    });
+}
 
-        // File select
-        function onFileSelect(input) {
-            const file = input.files[0];
-            if (file) {
-                const fn = document.getElementById('file-name');
-                fn.textContent = '📎 ' + file.name;
-                fn.style.display = 'block';
-                document.getElementById('btn-analizar').disabled = false;
-            }
-        }
-
-        // Drag & drop
-        const dropZone = document.getElementById('drop-zone');
-        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-        dropZone.addEventListener('drop', e => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                document.getElementById('archivo').files = dt.files;
-                onFileSelect(document.getElementById('archivo'));
-            }
-        });
-
-        async function analizar() {
-            const archivo = document.getElementById('archivo').files[0];
-            if (!archivo) return;
-
-            document.getElementById('upload-screen').style.display = 'none';
-            document.getElementById('loading-screen').style.display = 'flex';
-
-            const formData = new FormData();
-            formData.append('archivo', archivo);
-
-            try {
-                const resp = await fetch('/analizar', { method: 'POST', body: formData });
-                if (!resp.ok) throw new Error('Error del servidor: ' + resp.status);
-                const data = await resp.json();
-                if (data.error) throw new Error(data.error);
-                renderDashboard(data);
-            } catch (err) {
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('upload-screen').style.display = 'flex';
-                alert('Error al analizar: ' + err.message);
-            }
-        }
-
-        function nuevaConsulta() {
-            document.getElementById('dashboard-screen').style.display = 'none';
-            document.getElementById('upload-screen').style.display = 'flex';
-            document.getElementById('btn-pdf').style.display = 'none';
-            document.getElementById('topbar-sub').textContent = 'Sube un archivo Excel para comenzar';
-            document.getElementById('archivo').value = '';
-            document.getElementById('file-name').style.display = 'none';
-            document.getElementById('btn-analizar').disabled = true;
-            Object.values(charts).forEach(c => c.destroy());
-            charts = {};
-            showTab('tab-overview', document.querySelectorAll('.tab')[0]);
-        }
-
-        function renderDashboard(data) {
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('dashboard-screen').style.display = 'block';
-            document.getElementById('btn-pdf').style.display = 'flex';
-            document.getElementById('topbar-sub').textContent =
-                'Análisis completado · ' + new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
-
-            // Resumen
-            document.getElementById('resumen-text').textContent = data.resumen || '';
-
-            // KPIs
-            const colors = ['blue', 'green', 'yellow', 'purple'];
-            const arrows = { positiva: '↑', negativa: '↓', neutral: '→' };
-            const kpiGrid = document.getElementById('kpi-grid');
-            kpiGrid.innerHTML = '';
-            (data.kpis || []).slice(0, 4).forEach((kpi, i) => {
-                const arr = arrows[kpi.tendencia] || '→';
-                kpiGrid.innerHTML += `<div class="kpi-card ${colors[i]}">
-                    <div class="kpi-label">${kpi.titulo}</div>
-                    <div class="kpi-value">${Number(kpi.valor).toLocaleString('es-MX')}</div>
-                    <div class="kpi-unit">${kpi.unidad}</div>
-                    <div class="kpi-trend ${kpi.tendencia}">${arr} ${kpi.cambio || ''}</div>
-                </div>`;
-            });
-
-            // Charts
-            buildChartPeriodos(data.viajes_por_periodo || []);
-            buildChartCostos(data.costos_por_categoria || []);
-            buildChartRutas(data.rutas_eficiencia || []);
-            buildChartUnidades(data.unidades_rendimiento || []);
-
-            // Tabla rutas
-            const rutasTbody = document.getElementById('rutas-tbody');
-            rutasTbody.innerHTML = '';
-            (data.rutas_eficiencia || []).forEach(r => {
-                rutasTbody.innerHTML += `<tr>
-                    <td>${r.ruta}</td>
-                    <td>${Number(r.viajes).toLocaleString('es-MX')}</td>
-                    <td>${Number(r.km_promedio).toLocaleString('es-MX')} km</td>
-                    <td>$${Number(r.costo_promedio).toLocaleString('es-MX')}</td>
-                    <td>$${Number(r.costo_por_km).toFixed(2)}</td>
-                    <td><span class="badge-efic ${r.eficiencia}">${r.eficiencia}</span></td>
-                </tr>`;
-            });
-            document.getElementById('rutas-count').textContent = (data.rutas_eficiencia || []).length + ' rutas';
-
-            // Tabla unidades
-            const unidadesTbody = document.getElementById('unidades-tbody');
-            unidadesTbody.innerHTML = '';
-            (data.unidades_rendimiento || []).forEach(u => {
-                const score = Number(u.eficiencia_score);
-                const col = score >= 75 ? 'var(--accent-green)' : score >= 50 ? 'var(--accent-yellow)' : 'var(--accent-red)';
-                unidadesTbody.innerHTML += `<tr>
-                    <td>${u.unidad}</td>
-                    <td>${Number(u.viajes).toLocaleString('es-MX')}</td>
-                    <td>${Number(u.km_total).toLocaleString('es-MX')} km</td>
-                    <td>$${Number(u.costo_total).toLocaleString('es-MX')}</td>
-                    <td><span style="color:${col};font-weight:700">${score}/100</span></td>
-                </tr>`;
-            });
-            document.getElementById('unidades-count').textContent = (data.unidades_rendimiento || []).length + ' unidades';
-
-            // Alertas
-            const alertIcons = { critica: '🚨', advertencia: '⚠️', info: 'ℹ️' };
-            const alertContainer = document.getElementById('alerts-container');
-            alertContainer.innerHTML = '';
-            const alertas = data.alertas || [];
-            alertas.forEach(a => {
-                alertContainer.innerHTML += `<div class="alert-item ${a.tipo}">
-                    <div class="alert-icon">${alertIcons[a.tipo] || 'ℹ️'}</div>
-                    <div>
-                        <div class="alert-title">${a.titulo}</div>
-                        <div class="alert-desc">${a.descripcion}</div>
-                        ${a.unidad ? `<div class="alert-unit">Unidad: ${a.unidad}</div>` : ''}
-                    </div>
-                </div>`;
-            });
-            document.getElementById('alertas-count').textContent = alertas.length + ' alertas';
-            const criticas = alertas.filter(a => a.tipo === 'critica').length;
-            if (criticas > 0) {
-                const badge = document.getElementById('alert-badge');
-                badge.textContent = criticas;
-                badge.style.display = 'inline';
-            }
-
-            // Recomendaciones
-            const recContainer = document.getElementById('rec-container');
-            recContainer.innerHTML = '';
-            (data.recomendaciones || []).forEach(r => {
-                recContainer.innerHTML += `<div class="rec-card">
-                    <div class="rec-priority ${r.prioridad}">● Prioridad ${r.prioridad}</div>
-                    <div class="rec-title">${r.titulo}</div>
-                    <div class="rec-desc">${r.descripcion}</div>
-                    ${r.ahorro_estimado ? `<div class="rec-saving">💰 Ahorro estimado: ${r.ahorro_estimado}</div>` : ''}
-                </div>`;
-            });
-
-            // Conclusiones
-            document.getElementById('conclusiones-text').textContent = data.conclusiones || '';
-        }
-
-        function chartDefaults() {
-            return {
-                responsive: true,
-                plugins: { legend: { labels: { color: '#94a3b8', font: { size: 12 } } } },
-                scales: {
-                    x: { ticks: { color: '#94a3b8', maxRotation: 35 }, grid: { color: 'rgba(255,255,255,0.04)' } },
-                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.04)' } }
-                }
-            };
-        }
-
-        function buildChartPeriodos(data) {
-            if (charts.periodos) charts.periodos.destroy();
-            const ctx = document.getElementById('chart-periodos').getContext('2d');
-            charts.periodos = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.map(d => d.periodo),
-                    datasets: [{
-                        label: 'Viajes',
-                        data: data.map(d => d.viajes),
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59,130,246,0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointBackgroundColor: '#3b82f6',
-                        pointRadius: 4,
-                    }]
+/* ── Chart: donut costs ── */
+function buildDonut(data) {
+    if (charts.d) charts.d.destroy();
+    const ctx = document.getElementById('ch-costs').getContext('2d');
+    charts.d = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(d => d.categoria),
+            datasets: [{
+                data: data.map(d => d.monto),
+                backgroundColor: PALETTE.slice(0, data.length),
+                borderWidth: 0,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#8892a4',
+                        padding: 14,
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        font: { family: 'DM Sans', size: 12 }
+                    }
                 },
-                options: chartDefaults()
-            });
-        }
-
-        function buildChartCostos(data) {
-            if (charts.costos) charts.costos.destroy();
-            const ctx = document.getElementById('chart-costos').getContext('2d');
-            const palette = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899'];
-            charts.costos = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: data.map(d => d.categoria),
-                    datasets: [{
-                        data: data.map(d => d.monto),
-                        backgroundColor: palette.slice(0, data.length),
-                        borderWidth: 0,
-                        hoverOffset: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 14, font: { size: 12 } } },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => ` ${ctx.label}: $${Number(ctx.raw).toLocaleString('es-MX')} (${data[ctx.dataIndex]?.porcentaje || 0}%)`
-                            }
-                        }
+                tooltip: {
+                    ...tooltipCfg(),
+                    callbacks: {
+                        label: c => ` ${c.label}: $${fmt(c.raw)} (${data[c.dataIndex]?.porcentaje||0}%)`
                     }
                 }
-            });
-        }
-
-        function buildChartRutas(data) {
-            if (charts.rutasCost) charts.rutasCost.destroy();
-            const ctx1 = document.getElementById('chart-rutas-cost').getContext('2d');
-            charts.rutasCost = new Chart(ctx1, {
-                type: 'bar',
-                data: {
-                    labels: data.map(d => d.ruta),
-                    datasets: [{
-                        label: 'Costo/Km (MXN)',
-                        data: data.map(d => d.costo_por_km),
-                        backgroundColor: data.map(d =>
-                            d.eficiencia === 'alta' ? 'rgba(16,185,129,0.75)' :
-                            d.eficiencia === 'media' ? 'rgba(245,158,11,0.75)' : 'rgba(239,68,68,0.75)'
-                        ),
-                        borderRadius: 6,
-                    }]
-                },
-                options: chartDefaults()
-            });
-
-            if (charts.rutasViajes) charts.rutasViajes.destroy();
-            const ctx2 = document.getElementById('chart-rutas-viajes').getContext('2d');
-            charts.rutasViajes = new Chart(ctx2, {
-                type: 'bar',
-                data: {
-                    labels: data.map(d => d.ruta),
-                    datasets: [{
-                        label: 'Viajes',
-                        data: data.map(d => d.viajes),
-                        backgroundColor: 'rgba(139,92,246,0.75)',
-                        borderRadius: 6,
-                    }]
-                },
-                options: chartDefaults()
-            });
-        }
-
-        function buildChartUnidades(data) {
-            if (charts.unidades) charts.unidades.destroy();
-            const ctx = document.getElementById('chart-unidades').getContext('2d');
-            charts.unidades = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: data.map(d => d.unidad),
-                    datasets: [
-                        {
-                            label: 'Score Eficiencia',
-                            data: data.map(d => d.eficiencia_score),
-                            backgroundColor: 'rgba(59,130,246,0.75)',
-                            borderRadius: 6,
-                            yAxisID: 'y',
-                        },
-                        {
-                            label: 'Km Totales',
-                            data: data.map(d => d.km_total),
-                            type: 'line',
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16,185,129,0.1)',
-                            tension: 0.3,
-                            pointBackgroundColor: '#10b981',
-                            pointRadius: 4,
-                            yAxisID: 'y1',
-                            fill: false,
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { labels: { color: '#94a3b8', font: { size: 12 } } } },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-                        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.04)' }, position: 'left', title: { display: true, text: 'Score', color: '#64748b' } },
-                        y1: { ticks: { color: '#10b981' }, grid: { drawOnChartArea: false }, position: 'right', title: { display: true, text: 'Km', color: '#10b981' } }
-                    }
-                }
-            });
-        }
-
-        async function exportarPDF() {
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const content = document.getElementById('dashboard-screen');
-            const canvas = await html2canvas(content, { backgroundColor: '#0f172a', scale: 1.5 });
-            const img = canvas.toDataURL('image/png');
-            const W = pdf.internal.pageSize.getWidth();
-            const H = pdf.internal.pageSize.getHeight();
-            const imgH = (canvas.height * W) / canvas.width;
-            let y = 0;
-            while (y < imgH) {
-                if (y > 0) pdf.addPage();
-                pdf.addImage(img, 'PNG', 0, -y, W, imgH);
-                y += H;
             }
-            pdf.save('LogiAnalytics-Reporte.pdf');
         }
-    </script>
+    });
+}
+
+function tooltipCfg() {
+    return {
+        backgroundColor: '#141c2b',
+        borderColor: '#1a2030',
+        borderWidth: 1,
+        titleColor: '#eef2ff',
+        bodyColor: '#8892a4',
+        padding: 10,
+    };
+}
+
+function axCfg() {
+    return {
+        ticks: { color: '#4a5568', font: { family: 'DM Sans', size: 12 } },
+        grid: { color: 'rgba(255,255,255,.04)' }
+    };
+}
+
+/* ── Route efficiency bars ── */
+function buildRoutes(routes) {
+    const list = document.getElementById('route-list');
+    list.innerHTML = '';
+    document.getElementById('rutas-tag').textContent = routes.length + ' rutas';
+    if (!routes.length) {
+        list.innerHTML = '<p style="color:var(--text-3);font-size:13px">Sin datos de rutas</p>';
+        return;
+    }
+    const maxC = Math.max(...routes.map(r => Number(r.costo_por_km)));
+    routes.forEach(r => {
+        const pct = maxC > 0 ? (Number(r.costo_por_km) / maxC * 100).toFixed(1) : 0;
+        list.innerHTML += `
+        <div class="route-row">
+            <div class="route-hdr">
+                <div class="route-name">${r.ruta}</div>
+                <div class="route-meta">
+                    <div class="route-cost">$${Number(r.costo_por_km).toFixed(2)}/km</div>
+                    <span class="efic ${r.eficiencia}">${r.eficiencia}</span>
+                </div>
+            </div>
+            <div class="bar-track">
+                <div class="bar-fill ${r.eficiencia}" style="width:${pct}%"></div>
+            </div>
+        </div>`;
+    });
+}
+
+/* ── Units table ── */
+function buildUnits(units) {
+    const tbody = document.getElementById('units-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('units-tag').textContent = units.length + ' unidades';
+    units.forEach(u => {
+        const sc = Number(u.eficiencia_score);
+        const cls = sc >= 75 ? 'hi' : sc >= 50 ? 'mid' : 'lo';
+        tbody.innerHTML += `<tr>
+            <td class="td-name">${u.unidad}</td>
+            <td>${fmt(u.viajes)}</td>
+            <td>${fmt(u.km_total)} km</td>
+            <td>$${fmt(u.costo_total)}</td>
+            <td><span class="sbadge ${cls}">${sc}/100</span></td>
+        </tr>`;
+    });
+}
+
+/* ── Alerts ── */
+function buildAlerts(alertas) {
+    const grid = document.getElementById('alerts-grid');
+    grid.innerHTML = '';
+    document.getElementById('alert-tag').textContent = alertas.length + ' alertas';
+    const ico = { critica:'🚨', advertencia:'⚠️', info:'ℹ️' };
+    const criticas = alertas.filter(a => a.tipo === 'critica').length;
+    if (criticas > 0) {
+        const p = document.getElementById('alert-pill');
+        p.textContent = criticas; p.style.display = 'inline';
+    }
+    alertas.forEach(a => {
+        grid.innerHTML += `
+        <div class="alert-card ${a.tipo}">
+            <div class="alert-ico ${a.tipo}">${ico[a.tipo]||'ℹ️'}</div>
+            <div class="alert-body">
+                <div class="alert-tipo ${a.tipo}">${a.tipo}</div>
+                <div class="alert-ttl">${a.titulo}</div>
+                <div class="alert-desc">${a.descripcion}</div>
+                ${a.unidad ? `<div class="alert-unit">Unidad: ${a.unidad}</div>` : ''}
+            </div>
+        </div>`;
+    });
+}
+
+/* ── Recommendations ── */
+function buildRecs(recs) {
+    const list = document.getElementById('rec-list');
+    list.innerHTML = '';
+    recs.forEach(r => {
+        list.innerHTML += `
+        <div class="rec-item">
+            <div class="rec-dot ${r.prioridad}"></div>
+            <div class="rec-body">
+                <div class="rec-pri ${r.prioridad}">Prioridad ${r.prioridad}</div>
+                <div class="rec-ttl">${r.titulo}</div>
+                <div class="rec-desc">${r.descripcion}</div>
+                ${r.ahorro_estimado ? `<div class="rec-save">💰 Ahorro estimado: ${r.ahorro_estimado}</div>` : ''}
+            </div>
+        </div>`;
+    });
+}
+
+/* ── PDF export ── */
+async function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const el = document.getElementById('scr-dash');
+    const canvas = await html2canvas(el, {
+        backgroundColor: '#07090f',
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+    });
+    const img = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p','mm','a4');
+    const W = pdf.internal.pageSize.getWidth();
+    const H = pdf.internal.pageSize.getHeight();
+    const iH = (canvas.height * W) / canvas.width;
+    let y = 0;
+    while (y < iH) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(img, 'PNG', 0, -y, W, iH);
+        y += H;
+    }
+    pdf.save('LogiAnalytics-Reporte.pdf');
+}
+
+/* Init */
+show('scr-upload');
+</script>
 </body>
 </html>
