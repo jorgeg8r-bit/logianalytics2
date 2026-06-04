@@ -1,22 +1,33 @@
-from flask import Flask, request, jsonify, send_file, Response, stream_with_context
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import anthropic
 import os
 import json
 import threading
+import uuid
 
 app = Flask(__name__)
 CORS(app)
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
+# In-memory job store: { job_id: {"status": "procesando"|"listo"|"error", ...} }
+jobs = {}
+
+
 @app.route('/')
 def index():
     return send_file('index.html')
 
+
 @app.route('/analizar', methods=['POST'])
 def analizar():
-    datos = request.json.get('datos')
+    datos = (request.json or {}).get('datos')
+    if not datos:
+        return jsonify({"error": "No se recibió el campo 'datos'"}), 400
+
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {"status": "procesando"}
 
     prompt = f"""Eres un analista experto en logística y transporte en México.
 Analiza los siguientes datos de viajes de una empresa transportista.
@@ -64,9 +75,6 @@ El JSON debe tener EXACTAMENTE esta estructura:
 DATOS A ANALIZAR:
 {datos}"""
 
-    result = {}
-    done = threading.Event()
-
     def call_claude():
         try:
             message = client.messages.create(
@@ -82,22 +90,21 @@ DATOS A ANALIZAR:
             if raw.endswith("```"):
                 raw = raw[:-3]
             analisis = json.loads(raw.strip())
-            result['payload'] = {"ok": True, "analisis": analisis}
+            jobs[job_id] = {"status": "listo", "analisis": analisis}
         except Exception as e:
-            result['payload'] = {"ok": False, "error": str(e)}
-        finally:
-            done.set()
+            jobs[job_id] = {"status": "error", "error": str(e)}
 
     threading.Thread(target=call_claude, daemon=True).start()
+    return jsonify({"job_id": job_id})
 
-    def generate():
-        # Send a newline every 5 s to keep Railway's proxy from timing out.
-        # JSON.parse ignores leading whitespace so the frontend is unaffected.
-        while not done.wait(timeout=5):
-            yield '\n'
-        yield json.dumps(result['payload'])
 
-    return Response(stream_with_context(generate()), content_type='application/json')
+@app.route('/resultado/<job_id>', methods=['GET'])
+def resultado(job_id):
+    job = jobs.get(job_id)
+    if job is None:
+        return jsonify({"status": "error", "error": "Job no encontrado"}), 404
+    return jsonify(job)
+
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 3000))
