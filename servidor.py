@@ -1,10 +1,8 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import anthropic
-import openpyxl
 import os
 import json
-import io
 
 app = Flask(__name__)
 CORS(app)
@@ -19,25 +17,13 @@ def index():
 
 @app.route('/analizar', methods=['POST'])
 def analizar():
-    if 'archivo' not in request.files:
-        return jsonify({"error": "No se recibió archivo"}), 400
+    datos = (request.json or {}).get('datos')
+    if not datos:
+        return jsonify({"error": "No se recibió el campo 'datos'"}), 400
 
-    try:
-        archivo = request.files['archivo']
-        wb = openpyxl.load_workbook(io.BytesIO(archivo.read()), data_only=True)
-        ws = wb.active
-
-        rows = []
-        for row in ws.iter_rows(values_only=True):
-            rows.append(','.join([str(c) if c is not None else '' for c in row]))
-        datos = '\n'.join(rows)
-
-        # Limit data to avoid exceeding input token limits
-        if len(datos) > 40000:
-            datos = datos[:40000] + '\n[... datos truncados por tamaño ...]'
-
-    except Exception as e:
-        return jsonify({"error": f"No se pudo leer el archivo Excel: {str(e)}"}), 400
+    # Limit data to avoid exceeding input token limits
+    if len(datos) > 40000:
+        datos = datos[:40000] + '\n[... datos truncados por tamaño ...]'
 
     prompt = f"""Eres un analista experto en logística y transporte en México.
 Analiza estos datos de viajes de flota y devuelve ÚNICAMENTE un JSON válido con la estructura exacta que se muestra a continuación.
