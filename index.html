@@ -1084,13 +1084,10 @@ drop.addEventListener('drop', e => {
 });
 
 /* ── Analyze ── */
-let pollTimer = null;
-
 async function analizar() {
     const f = document.getElementById('fi').files[0];
     if (!f) return;
     show('scr-loading');
-    setLoadMsg('Leyendo archivo Excel...');
     try {
         const datos = await new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -1102,59 +1099,23 @@ async function analizar() {
             reader.onerror = reject;
             reader.readAsArrayBuffer(f);
         });
-
-        setLoadMsg('Enviando datos al servidor...');
         const r = await fetch('/analizar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ datos })
         });
         if (!r.ok) throw new Error('HTTP ' + r.status);
-        const { job_id, error } = await r.json();
-        if (error) throw new Error(error);
-
-        setLoadMsg('Analizando con IA… puede tardar hasta 60 segundos');
-        pollResult(job_id);
+        const data = await r.json();
+        if (!data.ok) throw new Error(data.error);
+        renderDash(data.analisis);
     } catch (e) {
         show('scr-upload');
         alert('Error: ' + e.message);
     }
 }
 
-function pollResult(jobId) {
-    pollTimer = setInterval(async () => {
-        try {
-            const r = await fetch('/resultado/' + jobId);
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            const data = await r.json();
-
-            if (data.status === 'listo') {
-                clearInterval(pollTimer);
-                pollTimer = null;
-                renderDash(data.analisis);
-            } else if (data.status === 'error') {
-                clearInterval(pollTimer);
-                pollTimer = null;
-                show('scr-upload');
-                alert('Error en el análisis: ' + data.error);
-            }
-            // status === 'procesando' → seguir esperando
-        } catch (e) {
-            clearInterval(pollTimer);
-            pollTimer = null;
-            show('scr-upload');
-            alert('Error al consultar resultado: ' + e.message);
-        }
-    }, 3000);
-}
-
-function setLoadMsg(msg) {
-    document.getElementById('load-sub').textContent = msg;
-}
-
 /* ── Reset ── */
 function resetear() {
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     show('scr-upload');
     document.getElementById('btn-pdf').style.display = 'none';
     document.getElementById('tp-sub').textContent = 'Análisis inteligente de operaciones logísticas';

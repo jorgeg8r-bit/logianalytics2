@@ -3,16 +3,11 @@ from flask_cors import CORS
 import anthropic
 import os
 import json
-import threading
-import uuid
 
 app = Flask(__name__)
 CORS(app)
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-
-# In-memory job store: { job_id: {"status": "procesando"|"listo"|"error", ...} }
-jobs = {}
 
 
 @app.route('/')
@@ -24,10 +19,7 @@ def index():
 def analizar():
     datos = (request.json or {}).get('datos')
     if not datos:
-        return jsonify({"error": "No se recibió el campo 'datos'"}), 400
-
-    job_id = str(uuid.uuid4())
-    jobs[job_id] = {"status": "procesando"}
+        return jsonify({"ok": False, "error": "No se recibió el campo 'datos'"}), 400
 
     prompt = f"""Eres un analista experto en logística y transporte en México.
 Analiza los siguientes datos de viajes de una empresa transportista.
@@ -75,37 +67,25 @@ El JSON debe tener EXACTAMENTE esta estructura:
 DATOS A ANALIZAR:
 {datos}"""
 
-    def call_claude():
-        try:
-            message = client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=4096,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            raw = message.content[0].text.strip()
-            if raw.startswith("```"):
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            if raw.endswith("```"):
-                raw = raw[:-3]
-            analisis = json.loads(raw.strip())
-            jobs[job_id] = {"status": "listo", "analisis": analisis}
-        except Exception as e:
-            jobs[job_id] = {"status": "error", "error": str(e)}
-
-    threading.Thread(target=call_claude, daemon=True).start()
-    return jsonify({"job_id": job_id})
-
-
-@app.route('/resultado/<job_id>', methods=['GET'])
-def resultado(job_id):
-    job = jobs.get(job_id)
-    if job is None:
-        return jsonify({"status": "error", "error": "Job no encontrado"}), 404
-    return jsonify(job)
+    try:
+        message = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw = message.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        analisis = json.loads(raw.strip())
+        return jsonify({"ok": True, "analisis": analisis})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
 
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 3000))
-    app.run(port=port)
+    app.run(port=port, threaded=True)
