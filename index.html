@@ -1207,7 +1207,7 @@ function renderDash(d) {
     grid.innerHTML = '';
     kpis.slice(0,4).forEach((k,i) => {
         grid.innerHTML += `<div class="kpi-card ${colors[i]}">
-            <div class="kpi-lbl">${k.titulo}</div>
+            <div class="kpi-lbl">${k.label}</div>
             <div class="kpi-val">${fmtS(k.valor)}</div>
             <div class="kpi-unit">${k.unidad}</div>
             <div class="kpi-foot">
@@ -1337,15 +1337,15 @@ function buildRoutes(routes) {
         list.innerHTML = '<p style="color:var(--text-3);font-size:13px">Sin datos de rutas</p>';
         return;
     }
-    const maxC = Math.max(...routes.map(r => Number(r.costo_por_km)));
+    const maxC = Math.max(...routes.map(r => Number(r.costo_km)));
     routes.forEach(r => {
-        const pct = maxC > 0 ? (Number(r.costo_por_km) / maxC * 100).toFixed(1) : 0;
+        const pct = maxC > 0 ? (Number(r.costo_km) / maxC * 100).toFixed(1) : 0;
         list.innerHTML += `
         <div class="route-row">
             <div class="route-hdr">
                 <div class="route-name">${r.ruta}</div>
                 <div class="route-meta">
-                    <div class="route-cost">$${Number(r.costo_por_km).toFixed(2)}/km</div>
+                    <div class="route-cost">$${Number(r.costo_km).toFixed(2)}/km</div>
                     <span class="efic ${r.eficiencia}">${r.eficiencia}</span>
                 </div>
             </div>
