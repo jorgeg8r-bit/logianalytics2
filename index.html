@@ -1769,6 +1769,8 @@ function buildRoutes(routes) {
         const ck = Number(r.costo_km);
         const ckDisplay = isNaN(ck) || ck === 0 ? '—' : '$' + ck.toFixed(2);
         const pct = maxC > 0 ? (Number(r.costo_km) / maxC * 100).toFixed(1) : 0;
+        const viajes = r.viajes || 0;
+        const kmTotal = r.km_total ? fmt(r.km_total) + ' km' : '—';
         list.innerHTML += `
         <div class="route-row">
             <div class="route-hdr">
@@ -1777,6 +1779,11 @@ function buildRoutes(routes) {
                     <div class="route-cost">${ckDisplay}/km</div>
                     <span class="efic ${r.eficiencia}">${r.eficiencia}</span>
                 </div>
+            </div>
+            <div style="display:flex;gap:16px;margin:2px 0 4px;font-size:11px;color:var(--text-3)">
+                <span>🚛 ${viajes} viajes</span>
+                <span>📍 ${kmTotal}</span>
+                ${r.costo_total ? `<span>💰 $${fmt(r.costo_total)}</span>` : ''}
             </div>
             <div class="bar-track">
                 <div class="bar-fill ${r.eficiencia}" style="width:${pct}%"></div>
