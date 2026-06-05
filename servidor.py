@@ -258,7 +258,7 @@ Responde con esta estructura exacta:
     {{"label": "Total Viajes",             "valor": <calculos.totales.total_filas>,        "unidad": "viajes", "tendencia": "neutro"}}
   ],
   "rutas_eficiencia": [
-    <una entrada por cada ruta en calculos.por_ruta — copia costo_por_km y viajes exactos,
+    <una entrada por cada ruta en calculos.por_ruta — copia costo_por_km, viajes, km_total y costo_total exactos,
      asigna eficiencia "alta"/"media"/"baja" según costo_por_km relativo al promedio general>
   ],
   "unidades_rendimiento": [
