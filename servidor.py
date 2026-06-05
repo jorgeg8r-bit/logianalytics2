@@ -29,10 +29,12 @@ Responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, si
   "conclusiones": "resumen ejecutivo aqui"
 }}
 
-REGLA IMPORTANTE para costos_por_categoria:
-- Úsalo SOLO si el Excel contiene columnas explícitas de desglose de costos (diesel, casetas, mantenimiento, sueldo, etc.).
-- Si el Excel solo tiene un costo total por viaje sin desglose, devuelve "costos_por_categoria": [].
-- NO inventes ni estimes proporciones.
+REGLAS CRÍTICAS:
+1) Solo usa números que existan explícitamente en el Excel. NUNCA inventes ni estimes valores.
+2) Si una columna no existe en los datos, usa null en vez de inventar.
+3) costos_por_categoria: SOLO si hay columnas explícitas de desglose (diesel, casetas, mantenimiento). Si no existen, devuelve [].
+4) viajes_por_periodo: SOLO si hay columna de fecha. Si no hay fecha, devuelve [].
+5) Sé honesto sobre qué datos faltan en las alertas.
 
 DATOS:
 {datos}"""
