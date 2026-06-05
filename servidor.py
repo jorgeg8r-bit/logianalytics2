@@ -1,7 +1,11 @@
 import os
 import uuid
 import json
+import io
+import csv
+import math
 import threading
+from collections import defaultdict
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import anthropic
@@ -13,37 +17,196 @@ client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 jobs = {}
 
+
+# ── Column detection ──────────────────────────────────────────────────────────
+
+def _detectar_col(headers, patrones):
+    for h in headers:
+        hl = h.lower().strip()
+        if any(p in hl for p in patrones):
+            return h
+    return None
+
+
+def _to_float(val):
+    try:
+        return float(str(val).replace(",", "").strip())
+    except (ValueError, TypeError):
+        return None
+
+
+def _r(val):
+    if val is None or (isinstance(val, float) and (math.isnan(val) or math.isinf(val))):
+        return None
+    return round(val, 2)
+
+
+# ── Pre-calculation (stdlib only: csv, io, collections) ───────────────────────
+
+def precalcular(csv_str: str) -> dict:
+    reader = csv.DictReader(io.StringIO(csv_str))
+    headers = reader.fieldnames or []
+
+    col_costo  = _detectar_col(headers, ["costo", "importe", "monto", "precio", "tarifa", "flete"])
+    col_km     = _detectar_col(headers, ["km", "kilo", "distancia"])
+    col_ruta   = _detectar_col(headers, ["ruta", "corredor"])
+    col_origen = _detectar_col(headers, ["origen", "origin", "salida"])
+    col_dest   = _detectar_col(headers, ["destino", "destination", "llegada"])
+    col_unidad = _detectar_col(headers, ["unidad", "placa", "vehiculo", "economico", "tracto"])
+
+    suma_costos = 0.0
+    suma_km     = 0.0
+    n_costo     = 0
+    n_km        = 0
+    total_filas = 0
+
+    rutas   = defaultdict(lambda: {"viajes": 0, "suma_costo": 0.0, "suma_km": 0.0})
+    unidades = defaultdict(lambda: {"viajes": 0, "suma_costo": 0.0})
+
+    for row in reader:
+        total_filas += 1
+
+        costo = _to_float(row.get(col_costo)) if col_costo else None
+        km    = _to_float(row.get(col_km))    if col_km    else None
+
+        if costo is not None:
+            suma_costos += costo
+            n_costo += 1
+        if km is not None:
+            suma_km += km
+            n_km += 1
+
+        # Ruta label
+        if col_ruta:
+            ruta_key = str(row.get(col_ruta, "")).strip()
+        elif col_origen and col_dest:
+            ruta_key = f"{str(row.get(col_origen,'')).strip()} → {str(row.get(col_dest,'')).strip()}"
+        else:
+            ruta_key = None
+
+        if ruta_key:
+            rutas[ruta_key]["viajes"] += 1
+            if costo is not None:
+                rutas[ruta_key]["suma_costo"] += costo
+            if km is not None:
+                rutas[ruta_key]["suma_km"] += km
+
+        if col_unidad:
+            uid = str(row.get(col_unidad, "")).strip()
+            if uid:
+                unidades[uid]["viajes"] += 1
+                if costo is not None:
+                    unidades[uid]["suma_costo"] += costo
+
+    promedio_costo       = _r(suma_costos / n_costo) if n_costo else None
+    promedio_km          = _r(suma_km     / n_km)    if n_km    else None
+    promedio_costo_por_km = _r(suma_costos / suma_km) if suma_km else None
+
+    por_ruta = []
+    for ruta, v in sorted(rutas.items(), key=lambda x: -x[1]["viajes"]):
+        sc, sk = v["suma_costo"], v["suma_km"]
+        por_ruta.append({
+            "ruta":          ruta,
+            "viajes":        v["viajes"],
+            "costo_total":   _r(sc),
+            "km_total":      _r(sk),
+            "costo_promedio": _r(sc / v["viajes"]) if v["viajes"] else None,
+            "costo_por_km":  _r(sc / sk) if sk else None,
+        })
+
+    por_unidad = []
+    for uid, v in sorted(unidades.items(), key=lambda x: -x[1]["viajes"]):
+        por_unidad.append({
+            "unidad":       uid,
+            "viajes":       v["viajes"],
+            "costo_total":  _r(v["suma_costo"]),
+            "costo_promedio_viaje": _r(v["suma_costo"] / v["viajes"]) if v["viajes"] else None,
+        })
+
+    return {
+        "columnas_detectadas": {
+            "costo":  col_costo,
+            "km":     col_km,
+            "ruta":   col_ruta or (f"{col_origen}+{col_dest}" if col_origen and col_dest else None),
+            "unidad": col_unidad,
+        },
+        "totales": {
+            "total_filas":          total_filas,
+            "suma_costos":          _r(suma_costos) if n_costo else None,
+            "suma_km":              _r(suma_km)     if n_km    else None,
+            "promedio_costo":       promedio_costo,
+            "promedio_km":          promedio_km,
+            "promedio_costo_por_km": promedio_costo_por_km,
+        },
+        "por_ruta":   por_ruta,
+        "por_unidad": por_unidad,
+    }
+
+
 PROMPT_TEMPLATE = """Eres un analista experto en logística y transporte en México.
-Analiza los siguientes datos de viajes de una empresa transportista.
 Responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, sin backticks.
 
+=== VALORES EXACTOS CALCULADOS POR PYTHON - NO MODIFICAR ===
+{calculos}
+
+=== INSTRUCCIONES ===
+Usa los valores anteriores para llenar resumen y kpis literalmente.
+Tu ÚNICO trabajo creativo es: rutas_eficiencia (eficiencia relativa entre rutas),
+unidades_rendimiento (eficiencia_score relativo), alertas y recomendaciones.
+
+Responde con esta estructura exacta:
+
 {{
-  "resumen": {{"total_viajes": null, "periodo": "No especificado", "flota_activa": null, "costo_total": null, "km_totales": null}},
-  "kpis": [{{"label": "Costo Promedio por Viaje", "valor": "0", "unidad": "MXN", "tendencia": "neutro"}}],
-  "rutas_eficiencia": [{{"ruta": "origen-destino", "costo_km": 0, "viajes": 0, "eficiencia": "alta"}}],
-  "unidades_rendimiento": [{{"unidad": "ID", "viajes": 0, "km_total": 0, "costo_total": 0, "eficiencia_score": 80}}],
-  "costos_por_categoria": [{{"categoria": "Combustible", "monto": 0, "porcentaje": 0}}],
-  "viajes_por_periodo": [{{"periodo": "Ene", "viajes": 0, "costo": 0}}],
-  "alertas": [{{"tipo": "info", "titulo": "titulo", "descripcion": "descripcion", "accion": "accion"}}],
-  "recomendaciones": [{{"prioridad": "alta", "titulo": "titulo", "descripcion": "descripcion", "ahorro_estimado": "0"}}],
-  "conclusiones": "resumen ejecutivo aqui"
+  "resumen": {{
+    "total_viajes": <calculos.totales.total_filas — usa este número exacto>,
+    "periodo":      "No especificado",
+    "flota_activa": <número de entradas en calculos.por_unidad, o null si está vacío>,
+    "costo_total":  <calculos.totales.suma_costos — usa este número exacto o null>,
+    "km_totales":   <calculos.totales.suma_km — usa este número exacto o null>
+  }},
+  "kpis": [
+    {{"label": "Costo Promedio por Viaje", "valor": <calculos.totales.promedio_costo>,    "unidad": "MXN",    "tendencia": "neutro"}},
+    {{"label": "Costo por Km",             "valor": <calculos.totales.promedio_costo_por_km>, "unidad": "MXN/km", "tendencia": "neutro"}},
+    {{"label": "Km Promedio por Viaje",    "valor": <calculos.totales.promedio_km>,       "unidad": "km",     "tendencia": "neutro"}},
+    {{"label": "Total Viajes",             "valor": <calculos.totales.total_filas>,        "unidad": "viajes", "tendencia": "neutro"}}
+  ],
+  "rutas_eficiencia": [
+    <una entrada por cada ruta en calculos.por_ruta — copia costo_por_km y viajes exactos,
+     asigna eficiencia "alta"/"media"/"baja" según costo_por_km relativo al promedio general>
+  ],
+  "unidades_rendimiento": [
+    <una entrada por cada unidad en calculos.por_unidad — copia viajes y costo_total exactos,
+     asigna eficiencia_score 0-100 según costo_promedio_viaje relativo al promedio general>
+  ],
+  "costos_por_categoria": [],
+  "viajes_por_periodo": [],
+  "alertas": [<3-5 alertas inteligentes basadas en los datos: rutas caras, unidades ineficientes, datos faltantes>],
+  "recomendaciones": [<3-5 recomendaciones accionables con ahorro_estimado realista>],
+  "conclusiones": "<párrafo ejecutivo de 3-4 oraciones con los números reales>"
 }}
 
 REGLAS CRÍTICAS:
-1) Solo usa números que existan explícitamente en el Excel. NUNCA inventes ni estimes valores.
-2) Si una columna no existe en los datos, usa null en vez de inventar.
-3) costos_por_categoria: SOLO si hay columnas explícitas de desglose (diesel, casetas, mantenimiento). Si no existen, devuelve [].
-4) viajes_por_periodo: SOLO si hay columna de fecha. Si no hay fecha, devuelve [].
-5) Sé honesto sobre qué datos faltan en las alertas.
+1) Copia los números de calculos exactamente. NUNCA recalcules ni redondees diferente.
+2) Si un valor en calculos es null, escribe null en el JSON.
+3) costos_por_categoria y viajes_por_periodo siempre [].
 
-DATOS:
-{datos}"""
+MUESTRA DE DATOS (primeras filas, solo para contexto):
+{muestra}"""
 
 
 def procesar(job_id: str, datos: str):
     jobs[job_id]["status"] = "processing"
     try:
-        prompt = PROMPT_TEMPLATE.format(datos=datos)
+        calculos = precalcular(datos)
+
+        lines = datos.splitlines()
+        muestra = "\n".join(lines[:min(20, len(lines))])
+
+        prompt = PROMPT_TEMPLATE.format(
+            calculos=json.dumps(calculos, ensure_ascii=False, indent=2),
+            muestra=muestra,
+        )
+
         message = client.messages.create(
             model="claude-opus-4-8",
             max_tokens=16000,
