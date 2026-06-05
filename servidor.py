@@ -48,7 +48,7 @@ def precalcular(csv_str: str) -> dict:
     headers = reader.fieldnames or []
 
     col_costo  = _detectar_col(headers, ["costo", "importe", "monto", "precio", "tarifa", "flete"])
-    col_km     = _detectar_col(headers, ["km", "kilo", "distancia"])
+    col_km     = _detectar_col(headers, ["km", "kilo", "iló", "ilom", "ilóm", "distancia"])
     col_ruta   = _detectar_col(headers, ["ruta", "corredor"])
     col_origen = _detectar_col(headers, ["origen", "origin", "salida"])
     col_dest   = _detectar_col(headers, ["destino", "destination", "llegada"])
@@ -180,8 +180,22 @@ Responde con esta estructura exacta:
   ],
   "costos_por_categoria": [],
   "viajes_por_periodo": [],
-  "alertas": [<3-5 alertas inteligentes basadas en los datos: rutas caras, unidades ineficientes, datos faltantes>],
-  "recomendaciones": [<3-5 recomendaciones accionables con ahorro_estimado realista>],
+  "alertas": [
+    {{
+      "tipo":        "<exactamente uno de: 'critica', 'advertencia', 'info'>",
+      "titulo":      "<título corto de la alerta>",
+      "descripcion": "<descripción detallada con números reales>",
+      "accion":      "<acción recomendada para resolver>"
+    }}
+  ],
+  "recomendaciones": [
+    {{
+      "prioridad":       "<exactamente uno de: 'alta', 'media', 'baja'>",
+      "titulo":          "<título corto de la recomendación>",
+      "descripcion":     "<descripción detallada con contexto>",
+      "ahorro_estimado": "<monto estimado en MXN o porcentaje, ej: '$12,000 MXN/mes'>"
+    }}
+  ],
   "conclusiones": "<párrafo ejecutivo de 3-4 oraciones con los números reales>"
 }}
 
