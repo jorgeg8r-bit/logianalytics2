@@ -56,6 +56,9 @@ def precalcular(csv_str: str, col_map: dict = None) -> dict:
     headers = reader.fieldnames or []
     cm = col_map or {}
 
+    print(f"[DEBUG] col_map recibido: {cm}", flush=True)
+    print(f"[DEBUG] headers del CSV: {headers}", flush=True)
+
     # ── Detección automática (fallback cuando col_map no cubre una clave) ──
     _auto_costo = _detectar_col(headers, ["total"],
                                  excluir=["km", "por", "rate", "tarifa"])
@@ -71,6 +74,9 @@ def precalcular(csv_str: str, col_map: dict = None) -> dict:
                                             "tipo de unidad", "tipo unidad"])
     _auto_mes    = _detectar_col(headers, ["mes", "month", "periodo", "period"])
     _auto_anio   = _detectar_col(headers, ["año", "anio", "anyo", "year"])
+
+    print(f"[DEBUG] auto-detección: costo={_auto_costo!r}, km={_auto_km!r}, "
+          f"ruta={_auto_ruta!r}, unidad={_auto_unidad!r}, mes={_auto_mes!r}", flush=True)
 
     # ── Aplicar col_map: si viene con valor, tiene prioridad sobre auto-detección ──
     col_costo  = cm.get("costo")  or _auto_costo
@@ -93,6 +99,10 @@ def precalcular(csv_str: str, col_map: dict = None) -> dict:
         col_ruta = _ruta_raw
     else:
         col_ruta = _auto_ruta
+
+    print(f"[DEBUG] columnas finales: costo={col_costo!r}, km={col_km!r}, "
+          f"ruta={col_ruta!r}, origen={col_origen!r}, dest={col_dest!r}, "
+          f"unidad={col_unidad!r}, mes={col_mes!r}", flush=True)
 
     suma_costos = 0.0
     suma_km     = 0.0
@@ -332,10 +342,12 @@ def analizar():
         return jsonify({"ok": False, "error": "No se recibió el campo 'datos'"}), 400
 
     # col_map es opcional; si viene del frontend se pasa directo a precalcular()
-    col_map = body.get("col_map") or {}
+    col_map_raw = body.get("col_map") or {}
+    print(f"[DEBUG] /analizar col_map raw: {col_map_raw}", flush=True)
     # Sanear: solo conservar claves válidas con valores string no vacíos
-    col_map = {k: v for k, v in col_map.items()
+    col_map = {k: v for k, v in col_map_raw.items()
                if k in ("costo", "km", "ruta", "unidad", "mes") and isinstance(v, str) and v.strip()}
+    print(f"[DEBUG] /analizar col_map sanitizado: {col_map}", flush=True)
 
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "pending", "analisis": None, "error": None}
