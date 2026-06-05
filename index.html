@@ -834,6 +834,125 @@
         }
         .rec-desc { font-size: 12.5px; color: var(--text-2); line-height: 1.55; }
         .rec-save { font-size: 12px; color: var(--accent); font-weight: 600; margin-top: 6px; }
+
+        /* ── Column Mapping Screen ── */
+        #scr-mapping {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 63px);
+            padding: 40px 20px;
+        }
+
+        .map-hero { text-align: center; margin-bottom: 24px; }
+        .map-hero h2 { font-size: 26px; font-weight: 800; letter-spacing: -.8px; margin-bottom: 6px; }
+        .map-hero h2 span { color: var(--accent); }
+        .map-hero p { font-size: 13.5px; color: var(--text-2); }
+
+        .map-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            width: 580px;
+            overflow: hidden;
+        }
+
+        .map-card-header {
+            padding: 18px 26px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            background: rgba(255,255,255,.01);
+        }
+
+        .map-file-ico {
+            width: 38px; height: 38px;
+            background: var(--accent-dim);
+            border: 1px solid rgba(0,212,170,.2);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 17px; flex-shrink: 0;
+        }
+
+        .map-card-title { font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif; }
+        .map-card-sub   { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+
+        .map-body { padding: 4px 0; }
+
+        .map-field {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 13px 26px;
+            border-bottom: 1px solid rgba(26,32,48,.6);
+            transition: background .15s;
+        }
+        .map-field:last-child { border-bottom: none; }
+        .map-field:hover { background: rgba(255,255,255,.011); }
+
+        .map-field-left {
+            display: flex; align-items: center; gap: 11px;
+            flex: 1; min-width: 0;
+        }
+
+        .map-ico {
+            width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 14px;
+        }
+        .map-ico.ci { background: rgba(0,212,170,.10); }
+        .map-ico.ck { background: rgba(59,130,246,.10); }
+        .map-ico.cr { background: rgba(245,158,11,.10); }
+        .map-ico.cu { background: rgba(139,92,246,.10); }
+        .map-ico.cm { background: rgba(16,185,129,.10); }
+
+        .map-field-label { font-size: 13px; font-weight: 600; font-family: 'Syne', sans-serif; }
+        .map-field-hint  { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+        .map-optional {
+            font-size: 10px; font-weight: 600;
+            background: var(--border); color: var(--text-3);
+            padding: 1px 7px; border-radius: 20px; margin-left: 5px;
+        }
+
+        .map-select {
+            width: 200px; flex-shrink: 0;
+            background: var(--bg);
+            border: 1px solid var(--border-2);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12.5px;
+            padding: 8px 30px 8px 11px;
+            cursor: pointer; outline: none;
+            transition: border-color .15s, box-shadow .15s;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234a5568' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 11px center;
+        }
+        .map-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,212,170,.12); }
+        .map-select option { background: #0d1117; color: var(--text); }
+        .map-select.has-val { border-color: rgba(0,212,170,.35); color: var(--accent); }
+
+        .map-footer {
+            padding: 16px 26px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            background: rgba(255,255,255,.01);
+        }
+
+        .map-required-note {
+            font-size: 11.5px; color: var(--text-3); line-height: 1.5; flex: 1;
+        }
+        .map-required-note b { color: var(--text-2); }
+
+        .map-footer-btns { display: flex; gap: 9px; flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -921,7 +1040,7 @@
                 <input type="file" id="fi" accept=".xlsx,.xls" style="display:none" onchange="onPick(this)">
                 <button class="btn-pick" onclick="document.getElementById('fi').click()">Elegir archivo</button>
                 <div class="picked-name" id="fname"></div>
-                <button class="btn-go" id="btn-go" onclick="analizar()" disabled>Analizar con IA →</button>
+                <button class="btn-go" id="btn-go" onclick="mostrarMapeo()" disabled>Analizar con IA →</button>
             </div>
         </div>
 
@@ -934,6 +1053,100 @@
             <div class="load-title">Analizando tu flota...</div>
             <div class="load-sub" id="load-sub">Enviando datos a la IA...</div>
             <div class="dots"><span></span><span></span><span></span></div>
+        </div>
+
+        <!-- ── COLUMN MAPPING ── -->
+        <div id="scr-mapping">
+            <div class="map-hero">
+                <div class="hero-badge">✦ Paso 2 de 2</div>
+                <h2>Confirma tus <span>columnas</span></h2>
+                <p>Indica qué columna del Excel corresponde a cada campo</p>
+            </div>
+            <div class="map-card">
+                <div class="map-card-header">
+                    <div class="map-file-ico">📊</div>
+                    <div>
+                        <div class="map-card-title" id="map-filename">archivo.xlsx</div>
+                        <div class="map-card-sub" id="map-colcount">— columnas detectadas</div>
+                    </div>
+                </div>
+                <div class="map-body">
+                    <!-- Costo Total -->
+                    <div class="map-field">
+                        <div class="map-field-left">
+                            <div class="map-ico ci">💰</div>
+                            <div>
+                                <div class="map-field-label">Costo Total</div>
+                                <div class="map-field-hint">Costo total del viaje en MXN</div>
+                            </div>
+                        </div>
+                        <select class="map-select" id="map-sel-costo" onchange="onMapChange(this)">
+                            <option value="">— Seleccionar —</option>
+                        </select>
+                    </div>
+                    <!-- Kilómetros -->
+                    <div class="map-field">
+                        <div class="map-field-left">
+                            <div class="map-ico ck">📏</div>
+                            <div>
+                                <div class="map-field-label">Kilómetros</div>
+                                <div class="map-field-hint">Distancia del viaje en km</div>
+                            </div>
+                        </div>
+                        <select class="map-select" id="map-sel-km" onchange="onMapChange(this)">
+                            <option value="">— Seleccionar —</option>
+                        </select>
+                    </div>
+                    <!-- Ruta / Origen-Destino -->
+                    <div class="map-field">
+                        <div class="map-field-left">
+                            <div class="map-ico cr">🗺️</div>
+                            <div>
+                                <div class="map-field-label">Ruta <span class="map-optional">opcional</span></div>
+                                <div class="map-field-hint">Columna de ruta o combinación Origen + Destino</div>
+                            </div>
+                        </div>
+                        <select class="map-select" id="map-sel-ruta" onchange="onMapChange(this)">
+                            <option value="">— Seleccionar —</option>
+                        </select>
+                    </div>
+                    <!-- Unidad -->
+                    <div class="map-field">
+                        <div class="map-field-left">
+                            <div class="map-ico cu">🚚</div>
+                            <div>
+                                <div class="map-field-label">Unidad / Vehículo <span class="map-optional">opcional</span></div>
+                                <div class="map-field-hint">Tipo o ID del vehículo</div>
+                            </div>
+                        </div>
+                        <select class="map-select" id="map-sel-unidad" onchange="onMapChange(this)">
+                            <option value="">— Seleccionar —</option>
+                        </select>
+                    </div>
+                    <!-- Fecha / Mes -->
+                    <div class="map-field">
+                        <div class="map-field-left">
+                            <div class="map-ico cm">📅</div>
+                            <div>
+                                <div class="map-field-label">Fecha / Mes <span class="map-optional">opcional</span></div>
+                                <div class="map-field-hint">Para la gráfica de actividad mensual</div>
+                            </div>
+                        </div>
+                        <select class="map-select" id="map-sel-mes" onchange="onMapChange(this)">
+                            <option value="">— Seleccionar —</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="map-footer">
+                    <div class="map-required-note">
+                        <b>Costo Total</b> y <b>Kilómetros</b> son obligatorios.<br>Los demás campos son opcionales.
+                    </div>
+                    <div class="map-footer-btns">
+                        <button class="btn btn-ghost" onclick="volverUpload()">← Cambiar archivo</button>
+                        <button class="btn btn-main" id="btn-confirmar" onclick="confirmarMapeo()">Analizar →</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ── DASHBOARD ── -->
@@ -1047,10 +1260,10 @@ let charts = {};
 
 /* ── Screens ── */
 function show(id) {
-    ['scr-upload','scr-loading','scr-dash'].forEach(s => {
+    ['scr-upload','scr-mapping','scr-loading','scr-dash'].forEach(s => {
         const el = document.getElementById(s);
         if (s === id) {
-            el.style.display = (s === 'scr-loading') ? 'flex' : (s === 'scr-upload') ? 'flex' : 'block';
+            el.style.display = (s === 'scr-dash') ? 'block' : 'flex';
         } else {
             el.style.display = 'none';
         }
@@ -1084,9 +1297,167 @@ drop.addEventListener('drop', e => {
     }
 });
 
-/* ── Analyze ── */
+/* ── Column Mapping ── */
 let _pollTimer = null;
+let _csvText   = '';
+let _csvHeaders = [];
 
+// Highlight select border when a value is chosen
+function onMapChange(sel) {
+    sel.classList.toggle('has-val', sel.value !== '');
+}
+
+// Populate all 5 dropdowns with detected column headers
+function _poblarDropdowns(headers) {
+    ['map-sel-costo','map-sel-km','map-sel-ruta','map-sel-unidad','map-sel-mes'].forEach(id => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '<option value="">— Seleccionar —</option>';
+
+        // Special combo option for ruta: Origen + Destino
+        if (id === 'map-sel-ruta') {
+            const og = headers.find(h => /origen|origin|salida/i.test(h));
+            const ds = headers.find(h => /destino|destination|llegada/i.test(h));
+            if (og && ds) {
+                const opt = document.createElement('option');
+                opt.value = `__combo__${og}||${ds}`;
+                opt.textContent = `🔗 ${og} + ${ds} (combinar)`;
+                sel.appendChild(opt);
+            }
+        }
+
+        headers.forEach(h => {
+            const opt = document.createElement('option');
+            opt.value = h;
+            opt.textContent = h.length > 32 ? h.slice(0, 30) + '…' : h;
+            sel.appendChild(opt);
+        });
+    });
+}
+
+// Smart auto-detection of columns (mirrors servidor.py logic, client-side)
+function _autoDetectar(headers) {
+    const find = (pats, excl) => {
+        for (const h of headers) {
+            const hl = h.toLowerCase();
+            if (pats.some(p => hl.includes(p))) {
+                if (excl && excl.some(e => hl.includes(e))) continue;
+                return h;
+            }
+        }
+        return null;
+    };
+
+    const costo  = find(['total'],                        ['km','por','rate','tarifa'])
+                || find(['costo','importe','monto','flete'], ['por','km','rate','tarifa']);
+    const km     = find(['km','iló','kilom','distancia'], ['costo','por','tarifa','precio','rate']);
+    const rutaH  = find(['ruta','corredor'],              []);
+    const og     = headers.find(h => /origen|origin|salida/i.test(h));
+    const ds     = headers.find(h => /destino|destination|llegada/i.test(h));
+    const unidad = find(['unidad','placa','vehiculo','economico'], []);
+    const mes    = find(['mes','fecha','periodo','month','date'],  []);
+
+    const setVal = (id, val) => {
+        if (!val) return;
+        const sel = document.getElementById(id);
+        if ([...sel.options].some(o => o.value === val)) {
+            sel.value = val;
+            sel.classList.add('has-val');
+        }
+    };
+
+    setVal('map-sel-costo',  costo);
+    setVal('map-sel-km',     km);
+    if (rutaH) {
+        setVal('map-sel-ruta', rutaH);
+    } else if (og && ds) {
+        setVal('map-sel-ruta', `__combo__${og}||${ds}`);
+    }
+    setVal('map-sel-unidad', unidad);
+    setVal('map-sel-mes',    mes);
+}
+
+// Show the mapping screen after file is read
+async function mostrarMapeo() {
+    const f = document.getElementById('fi').files[0];
+    if (!f) return;
+    try {
+        _csvText = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                resolve(XLSX.utils.sheet_to_csv(ws));
+            };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(f);
+        });
+
+        // Parse headers from first CSV line (handle quoted commas)
+        _csvHeaders = _csvText.split('\n')[0]
+            .split(',')
+            .map(h => h.trim().replace(/^"|"$/g, ''));
+
+        document.getElementById('map-filename').textContent = f.name;
+        document.getElementById('map-colcount').textContent =
+            `${_csvHeaders.length} columna${_csvHeaders.length !== 1 ? 's' : ''} detectada${_csvHeaders.length !== 1 ? 's' : ''}`;
+
+        _poblarDropdowns(_csvHeaders);
+        _autoDetectar(_csvHeaders);
+        show('scr-mapping');
+    } catch (e) {
+        alert('Error al leer el archivo: ' + e.message);
+    }
+}
+
+// Back to upload screen without losing file selection
+function volverUpload() {
+    show('scr-upload');
+}
+
+// Confirm mapping and send to server
+function confirmarMapeo() {
+    const costo  = document.getElementById('map-sel-costo').value;
+    const km     = document.getElementById('map-sel-km').value;
+    const ruta   = document.getElementById('map-sel-ruta').value;
+    const unidad = document.getElementById('map-sel-unidad').value;
+    const mes    = document.getElementById('map-sel-mes').value;
+
+    if (!costo || !km) {
+        const miss = [!costo && 'Costo Total', !km && 'Kilómetros'].filter(Boolean);
+        alert(`Por favor selecciona: ${miss.join(' y ')}`);
+        return;
+    }
+
+    const col_map = {};
+    if (costo)  col_map.costo  = costo;
+    if (km)     col_map.km     = km;
+    if (ruta)   col_map.ruta   = ruta;
+    if (unidad) col_map.unidad = unidad;
+    if (mes)    col_map.mes    = mes;
+
+    _enviarAnalisis(_csvText, col_map);
+}
+
+// Actual API call (replaces analizar() inline logic)
+async function _enviarAnalisis(datos, col_map) {
+    show('scr-loading');
+    try {
+        const response = await fetch('/analizar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ datos, col_map })
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error);
+        _iniciarPolling(data.job_id);
+    } catch (e) {
+        show('scr-mapping');
+        alert('Error: ' + e.message);
+    }
+}
+
+/* ── Analyze (legacy — kept for compatibility) ── */
 async function analizar() {
     const f = document.getElementById('fi').files[0];
     if (!f) return;
@@ -1144,6 +1515,14 @@ function _iniciarPolling(jobId) {
 
 /* ── Reset ── */
 function resetear() {
+    if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+    _csvText    = '';
+    _csvHeaders = [];
+    // Reset dropdowns
+    ['map-sel-costo','map-sel-km','map-sel-ruta','map-sel-unidad','map-sel-mes'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (sel) { sel.innerHTML = '<option value="">— Seleccionar —</option>'; sel.classList.remove('has-val'); }
+    });
     show('scr-upload');
     document.getElementById('btn-pdf').style.display = 'none';
     document.getElementById('tp-sub').textContent = 'Análisis inteligente de operaciones logísticas';
