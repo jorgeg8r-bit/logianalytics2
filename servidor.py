@@ -3,18 +3,25 @@ from flask_cors import CORS
 import anthropic
 import os
 import json
-import threading
 
 app = Flask(__name__)
 CORS(app)
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-jobs = {}
 
-def procesar(job_id, datos):
-    try:
-        prompt = f"""Eres un analista experto en logística y transporte en México.
+@app.route('/')
+def index():
+    return send_file('index.html')
+
+
+@app.route('/analizar', methods=['POST'])
+def analizar():
+    datos = (request.json or {}).get('datos')
+    if not datos:
+        return jsonify({"ok": False, "error": "No se recibió el campo 'datos'"}), 400
+
+    prompt = f"""Eres un analista experto en logística y transporte en México.
 Analiza los siguientes datos de viajes de una empresa transportista.
 Responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, sin backticks.
 
@@ -33,6 +40,7 @@ Responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, si
 DATOS:
 {datos}"""
 
+    try:
         message = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=4096,
@@ -45,28 +53,11 @@ DATOS:
                 raw = raw[4:]
         if raw.endswith("```"):
             raw = raw[:-3]
-        jobs[job_id] = {"status": "listo", "analisis": json.loads(raw.strip())}
+        analisis = json.loads(raw.strip())
+        return jsonify({"ok": True, "analisis": analisis})
     except Exception as e:
-        jobs[job_id] = {"status": "error", "error": str(e)}
+        return jsonify({"ok": False, "error": str(e)})
 
-@app.route('/')
-def index():
-    return send_file('index.html')
-
-@app.route('/analizar', methods=['POST'])
-def analizar():
-    datos = request.json.get('datos')
-    job_id = os.urandom(8).hex()
-    jobs[job_id] = {"status": "procesando"}
-    threading.Thread(target=procesar, args=(job_id, datos)).start()
-    return jsonify({"ok": True, "job_id": job_id})
-
-@app.route('/resultado/<job_id>')
-def resultado(job_id):
-    job = jobs.get(job_id)
-    if not job:
-        return jsonify({"status": "no_encontrado"}), 404
-    return jsonify(job)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 3000))
