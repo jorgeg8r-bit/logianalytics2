@@ -45,7 +45,7 @@ def procesar(job_id: str, datos: str):
     try:
         prompt = PROMPT_TEMPLATE.format(datos=datos)
         message = client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-opus-4-8",
             max_tokens=16000,
             messages=[{"role": "user", "content": prompt}],
         )
