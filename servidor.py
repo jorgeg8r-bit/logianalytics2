@@ -49,14 +49,26 @@ def precalcular(csv_str: str) -> dict:
     reader = csv.DictReader(io.StringIO(csv_str))
     headers = reader.fieldnames or []
 
-    col_costo  = _detectar_col(headers, ["costo", "importe", "monto", "precio", "tarifa", "flete"])
-    # Exclude cost-rate columns (e.g. "Costo por Km") from pure-distance detection
+    # col_costo: buscar costo TOTAL — excluir columnas de tarifa/rate ("por", "km", "rate")
+    # Esto evita que "Costo por Km (MXN)" se confunda con el costo total del viaje.
+    # Prioridad: "total" primero, luego fallback a costo genérico sin "por"/"km".
+    col_costo  = _detectar_col(headers, ["total"],
+                                excluir=["km", "por", "rate", "tarifa"])
+    if col_costo is None:
+        col_costo = _detectar_col(headers, ["costo", "importe", "monto", "flete"],
+                                   excluir=["por", "km", "rate", "tarifa"])
+
+    # col_km: distancia pura — excluir columnas que mezclen km con costo/tarifa
     col_km     = _detectar_col(headers, ["km", "kilo", "iló", "ilom", "ilóm", "distancia"],
-                                excluir=["costo", "por", "tarifa", "precio"])
+                                excluir=["costo", "por", "tarifa", "precio", "rate"])
+
     col_ruta   = _detectar_col(headers, ["ruta", "corredor"])
     col_origen = _detectar_col(headers, ["origen", "origin", "salida"])
     col_dest   = _detectar_col(headers, ["destino", "destination", "llegada"])
-    col_unidad = _detectar_col(headers, ["unidad", "placa", "vehiculo", "economico", "tracto"])
+    col_unidad = _detectar_col(headers, ["unidad", "placa", "vehiculo", "economico", "tracto",
+                                          "tipo de unidad", "tipo unidad"])
+    col_mes    = _detectar_col(headers, ["mes", "month", "periodo", "period"])
+    col_anio   = _detectar_col(headers, ["año", "anio", "anyo", "year"])
 
     suma_costos = 0.0
     suma_km     = 0.0
@@ -64,8 +76,9 @@ def precalcular(csv_str: str) -> dict:
     n_km        = 0
     total_filas = 0
 
-    rutas   = defaultdict(lambda: {"viajes": 0, "suma_costo": 0.0, "suma_km": 0.0})
+    rutas    = defaultdict(lambda: {"viajes": 0, "suma_costo": 0.0, "suma_km": 0.0})
     unidades = defaultdict(lambda: {"viajes": 0, "suma_costo": 0.0})
+    periodos = defaultdict(lambda: {"viajes": 0, "suma_costo": 0.0})
 
     for row in reader:
         total_filas += 1
@@ -102,6 +115,16 @@ def precalcular(csv_str: str) -> dict:
                 if costo is not None:
                     unidades[uid]["suma_costo"] += costo
 
+        # Período = Mes + Año (o solo Mes si no hay columna de año)
+        if col_mes:
+            mes_val  = str(row.get(col_mes,  "")).strip()
+            anio_val = str(row.get(col_anio, "")).strip() if col_anio else ""
+            periodo_key = f"{mes_val} {anio_val}".strip() if anio_val else mes_val
+            if periodo_key:
+                periodos[periodo_key]["viajes"] += 1
+                if costo is not None:
+                    periodos[periodo_key]["suma_costo"] += costo
+
     promedio_costo       = _r(suma_costos / n_costo) if n_costo else None
     promedio_km          = _r(suma_km     / n_km)    if n_km    else None
     promedio_costo_por_km = _r(suma_costos / suma_km) if suma_km else None
@@ -127,23 +150,48 @@ def precalcular(csv_str: str) -> dict:
             "costo_promedio_viaje": _r(v["suma_costo"] / v["viajes"]) if v["viajes"] else None,
         })
 
+    # Ordenar periodos cronológicamente (meses en español)
+    _orden_mes = ["enero","febrero","marzo","abril","mayo","junio",
+                  "julio","agosto","septiembre","octubre","noviembre","diciembre"]
+    def _sort_periodo(k):
+        k_lower = k.lower()
+        for i, m in enumerate(_orden_mes):
+            if m in k_lower:
+                # extraer año si existe
+                partes = k_lower.split()
+                anio = next((p for p in partes if p.isdigit()), "9999")
+                return (anio, i)
+        return ("9999", 99)
+
+    por_periodo = [
+        {
+            "periodo":      k,
+            "viajes":       v["viajes"],
+            "costo":        _r(v["suma_costo"]),
+        }
+        for k, v in sorted(periodos.items(), key=lambda x: _sort_periodo(x[0]))
+    ]
+
     return {
         "columnas_detectadas": {
             "costo":  col_costo,
             "km":     col_km,
             "ruta":   col_ruta or (f"{col_origen}+{col_dest}" if col_origen and col_dest else None),
             "unidad": col_unidad,
+            "mes":    col_mes,
+            "anio":   col_anio,
         },
         "totales": {
-            "total_filas":          total_filas,
-            "suma_costos":          _r(suma_costos) if n_costo else None,
-            "suma_km":              _r(suma_km)     if n_km    else None,
-            "promedio_costo":       promedio_costo,
-            "promedio_km":          promedio_km,
+            "total_filas":           total_filas,
+            "suma_costos":           _r(suma_costos) if n_costo else None,
+            "suma_km":               _r(suma_km)     if n_km    else None,
+            "promedio_costo":        promedio_costo,
+            "promedio_km":           promedio_km,
             "promedio_costo_por_km": promedio_costo_por_km,
         },
-        "por_ruta":   por_ruta,
-        "por_unidad": por_unidad,
+        "por_ruta":    por_ruta,
+        "por_unidad":  por_unidad,
+        "por_periodo": por_periodo,
     }
 
 
@@ -183,7 +231,7 @@ Responde con esta estructura exacta:
      asigna eficiencia_score 0-100 según costo_promedio_viaje relativo al promedio general>
   ],
   "costos_por_categoria": [],
-  "viajes_por_periodo": [],
+  "viajes_por_periodo": <COPIA EXACTA de calculos.por_periodo como lista de objetos con "periodo","viajes","costo">,
   "alertas": [
     {{
       "tipo":        "<exactamente uno de: 'critica', 'advertencia', 'info'>",
@@ -206,7 +254,9 @@ Responde con esta estructura exacta:
 REGLAS CRÍTICAS:
 1) Copia los números de calculos exactamente. NUNCA recalcules ni redondees diferente.
 2) Si un valor en calculos es null, escribe null en el JSON.
-3) costos_por_categoria y viajes_por_periodo siempre [].
+3) costos_por_categoria siempre [].
+4) viajes_por_periodo: copia calculos.por_periodo tal cual. Si por_periodo está vacío, devuelve [].
+5) En rutas_eficiencia usa el campo "costo_km" (NO "costo_por_km") con el valor de costo_por_km de cada ruta.
 
 MUESTRA DE DATOS (primeras filas, solo para contexto):
 {muestra}"""
