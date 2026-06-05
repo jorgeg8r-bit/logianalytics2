@@ -1603,6 +1603,32 @@ function renderDash(d) {
         </div>`;
     });
 
+    // KPIs extra calculados desde los datos
+    const rutas = d.rutas_eficiencia || [];
+    const unidades = d.unidades_rendimiento || [];
+    const periodos = d.viajes_por_periodo || [];
+
+    const rutaEficiente = rutas.filter(r => r.costo_km > 0).sort((a,b) => a.costo_km - b.costo_km)[0];
+    const rutaIneficiente = rutas.filter(r => r.costo_km > 0).sort((a,b) => b.costo_km - a.costo_km)[0];
+    const unidadTop = unidades.sort((a,b) => b.viajes - a.viajes)[0];
+    const mesTop = periodos.filter(p => p.costo > 0).sort((a,b) => b.costo - a.costo)[0];
+
+    const extraKpis = [
+        { label: '🏆 Ruta más eficiente', val: rutaEficiente ? rutaEficiente.ruta : '—', sub: rutaEficiente ? '$' + rutaEficiente.costo_km.toFixed(2) + '/km' : '' },
+        { label: '⚠️ Ruta menos eficiente', val: rutaIneficiente ? rutaIneficiente.ruta : '—', sub: rutaIneficiente ? '$' + rutaIneficiente.costo_km.toFixed(2) + '/km' : '' },
+        { label: '🚛 Unidad más usada', val: unidadTop ? unidadTop.unidad : '—', sub: unidadTop ? unidadTop.viajes + ' viajes' : '' },
+        { label: '📅 Mes con más gasto', val: mesTop ? mesTop.periodo : '—', sub: mesTop ? '$' + fmt(mesTop.costo) + ' MXN' : '' },
+    ];
+
+    const extraColors = ['ka','kb','kc','kd'];
+    extraKpis.forEach((k,i) => {
+        grid.innerHTML += `<div class="kpi-card ${extraColors[i]}">
+            <div class="kpi-lbl">${k.label}</div>
+            <div class="kpi-val" style="font-size:clamp(13px,1.5vw,18px);line-height:1.3">${k.val}</div>
+            <div class="kpi-unit">${k.sub}</div>
+        </div>`;
+    });
+
     /* Conclusion */
     document.getElementById('concl-txt').textContent = d.conclusiones || d.resumen || '—';
 
