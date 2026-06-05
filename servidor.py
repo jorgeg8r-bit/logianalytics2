@@ -21,8 +21,8 @@ Responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, si
 {{
   "resumen": {{"total_viajes": null, "periodo": "No especificado", "flota_activa": null, "costo_total": null, "km_totales": null}},
   "kpis": [{{"label": "Costo Promedio por Viaje", "valor": "0", "unidad": "MXN", "tendencia": "neutro"}}],
-  "rutas_eficiencia": [{{"ruta": "origen-destino", "costo_km": 0, "viajes": 0, "status": "eficiente"}}],
-  "unidades_rendimiento": [{{"unidad": "ID", "km_totales": 0, "costo_total": 0, "costo_km": 0, "alerta": false, "motivo_alerta": null}}],
+  "rutas_eficiencia": [{{"ruta": "origen-destino", "costo_km": 0, "viajes": 0, "eficiencia": "alta"}}],
+  "unidades_rendimiento": [{{"unidad": "ID", "viajes": 0, "km_total": 0, "costo_total": 0, "eficiencia_score": 80}}],
   "costos_por_categoria": [{{"categoria": "Combustible", "monto": 0, "porcentaje": 0}}],
   "viajes_por_periodo": [{{"periodo": "Ene", "viajes": 0, "costo": 0}}],
   "alertas": [{{"tipo": "info", "titulo": "titulo", "descripcion": "descripcion", "accion": "accion"}}],
