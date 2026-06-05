@@ -111,7 +111,7 @@ def precalcular(csv_str: str, col_map: dict = None) -> dict:
     total_filas = 0
 
     rutas    = defaultdict(lambda: {"viajes": 0, "suma_costo": 0.0, "suma_km": 0.0})
-    unidades = defaultdict(lambda: {"viajes": 0, "suma_costo": 0.0})
+    unidades = defaultdict(lambda: {"viajes": 0, "suma_costo": 0.0, "suma_km": 0.0})
     periodos = defaultdict(lambda: {"viajes": 0, "suma_costo": 0.0})
 
     for row in reader:
@@ -151,6 +151,8 @@ def precalcular(csv_str: str, col_map: dict = None) -> dict:
                 unidades[uid]["viajes"] += 1
                 if costo is not None:
                     unidades[uid]["suma_costo"] += costo
+                if km is not None:
+                    unidades[uid]["suma_km"] += km
 
         # Período = Mes + Año (o solo Mes si no hay columna de año)
         if col_mes:
@@ -184,6 +186,7 @@ def precalcular(csv_str: str, col_map: dict = None) -> dict:
             "unidad":       uid,
             "viajes":       v["viajes"],
             "costo_total":  _r(v["suma_costo"]),
+            "km_total":     _r(v["suma_km"]),
             "costo_promedio_viaje": _r(v["suma_costo"] / v["viajes"]) if v["viajes"] else None,
         })
 
