@@ -1570,6 +1570,7 @@ function fmtS(n) {
 
 /* ── Render dashboard ── */
 function renderDash(d) {
+    window._dashData = d;
     show('scr-dash');
     document.getElementById('btn-pdf').style.display = 'inline-flex';
     document.getElementById('tp-sub').textContent =
@@ -1882,24 +1883,215 @@ function buildRecs(recs) {
 /* ── PDF export ── */
 async function exportPDF() {
     const { jsPDF } = window.jspdf;
-    const el = document.getElementById('scr-dash');
-    const canvas = await html2canvas(el, {
-        backgroundColor: '#07090f',
-        scale: 1.5,
-        useCORS: true,
-        logging: false,
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const W = 210, M = 15;
+    let y = 20;
+
+    const addPage = () => { pdf.addPage(); y = 20; };
+    const checkY = (needed) => { if (y + needed > 280) addPage(); };
+
+    // Header
+    pdf.setFillColor(0, 212, 170);
+    pdf.rect(0, 0, 210, 12, 'F');
+    pdf.setTextColor(7, 9, 15);
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('LogiAnalytics — Reporte Ejecutivo', M, 8.5);
+    pdf.setTextColor(100, 100, 100);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text('Generado el ' + new Date().toLocaleDateString('es-MX', {year:'numeric',month:'long',day:'numeric'}), W - M, 8.5, {align:'right'});
+
+    // Conclusión ejecutiva
+    const d = window._dashData;
+    if (!d) { pdf.save('LogiAnalytics-Reporte.pdf'); return; }
+    const res = d.resumen || {};
+
+    y = 22;
+    pdf.setFontSize(13);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(20, 20, 20);
+    pdf.text('Resumen Ejecutivo', M, y); y += 7;
+
+    // KPI boxes
+    const kpis2 = [
+        { label: 'Total Viajes', val: (res.total_viajes||0).toString() },
+        { label: 'Costo Total', val: '$' + fmtS(res.costo_total) + ' MXN' },
+        { label: 'Km Totales', val: fmtS(res.km_totales) + ' km' },
+        { label: 'Flota Activa', val: (res.flota_activa||0) + ' unidades' },
+    ];
+    const bw = (W - M*2 - 9) / 4;
+    kpis2.forEach((k, i) => {
+        const x = M + i * (bw + 3);
+        pdf.setFillColor(245, 247, 250);
+        pdf.roundedRect(x, y, bw, 18, 2, 2, 'F');
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(120, 120, 120);
+        pdf.text(k.label.toUpperCase(), x + bw/2, y + 5, {align:'center'});
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(20, 20, 20);
+        pdf.text(k.val, x + bw/2, y + 13, {align:'center'});
     });
-    const img = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p','mm','a4');
-    const W = pdf.internal.pageSize.getWidth();
-    const H = pdf.internal.pageSize.getHeight();
-    const iH = (canvas.height * W) / canvas.width;
-    let y = 0;
-    while (y < iH) {
-        if (y > 0) pdf.addPage();
-        pdf.addImage(img, 'PNG', 0, -y, W, iH);
-        y += H;
+    y += 24;
+
+    // Conclusión
+    if (d.conclusiones) {
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(60, 60, 60);
+        const lines = pdf.splitTextToSize(d.conclusiones, W - M*2);
+        lines.forEach(l => { checkY(5); pdf.text(l, M, y); y += 4.5; });
+        y += 4;
     }
+
+    // Top 10 Rutas
+    checkY(40);
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(20, 20, 20);
+    pdf.text('Eficiencia por Ruta (Top 10)', M, y); y += 6;
+
+    pdf.setFillColor(0, 212, 170);
+    pdf.rect(M, y, W - M*2, 6, 'F');
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(7, 9, 15);
+    pdf.text('RUTA', M+2, y+4);
+    pdf.text('VIAJES', M+95, y+4, {align:'right'});
+    pdf.text('KM TOTAL', M+120, y+4, {align:'right'});
+    pdf.text('COSTO TOTAL', M+152, y+4, {align:'right'});
+    pdf.text('$/KM', M+178, y+4, {align:'right'});
+    y += 8;
+
+    const rutas = (d.rutas_eficiencia||[]).slice(0,10);
+    rutas.forEach((r, i) => {
+        checkY(7);
+        if (i % 2 === 0) { pdf.setFillColor(250,251,252); pdf.rect(M, y-4, W-M*2, 6.5, 'F'); }
+        pdf.setFontSize(7.5);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(40, 40, 40);
+        pdf.text((r.ruta||'').substring(0,35), M+2, y);
+        pdf.text((r.viajes||0).toString(), M+95, y, {align:'right'});
+        pdf.text(r.km_total ? fmt(r.km_total)+' km' : '—', M+120, y, {align:'right'});
+        pdf.text(r.costo_total ? '$'+fmt(r.costo_total) : '—', M+152, y, {align:'right'});
+        const ck = Number(r.costo_km);
+        pdf.text(!isNaN(ck) && ck>0 ? '$'+ck.toFixed(2) : '—', M+178, y, {align:'right'});
+        y += 6.5;
+    });
+    y += 4;
+
+    // Unidades
+    checkY(40);
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(20, 20, 20);
+    pdf.text('Rendimiento por Unidad', M, y); y += 6;
+
+    pdf.setFillColor(139, 92, 246);
+    pdf.rect(M, y, W - M*2, 6, 'F');
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(255, 255, 255);
+    pdf.text('UNIDAD', M+2, y+4);
+    pdf.text('VIAJES', M+80, y+4, {align:'right'});
+    pdf.text('KM TOTAL', M+115, y+4, {align:'right'});
+    pdf.text('COSTO TOTAL', M+152, y+4, {align:'right'});
+    pdf.text('SCORE', M+178, y+4, {align:'right'});
+    y += 8;
+
+    const unidades = d.unidades_rendimiento || [];
+    unidades.forEach((u, i) => {
+        checkY(7);
+        if (i % 2 === 0) { pdf.setFillColor(250,251,252); pdf.rect(M, y-4, W-M*2, 6.5, 'F'); }
+        pdf.setFontSize(7.5);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(40, 40, 40);
+        pdf.text((u.unidad||''), M+2, y);
+        pdf.text((u.viajes||0).toString(), M+80, y, {align:'right'});
+        pdf.text(u.km_total ? fmt(u.km_total)+' km' : '—', M+115, y, {align:'right'});
+        pdf.text(u.costo_total ? '$'+fmt(u.costo_total) : '—', M+152, y, {align:'right'});
+        pdf.text((u.eficiencia_score||0)+'/100', M+178, y, {align:'right'});
+        y += 6.5;
+    });
+    y += 4;
+
+    // Alertas
+    const alertas = d.alertas || [];
+    if (alertas.length) {
+        checkY(20);
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(20, 20, 20);
+        pdf.text('Alertas Operativas', M, y); y += 7;
+        alertas.forEach(a => {
+            checkY(15);
+            const color = a.tipo==='critica' ? [220,38,38] : a.tipo==='advertencia' ? [245,158,11] : [59,130,246];
+            pdf.setFillColor(...color);
+            pdf.rect(M, y-3, 2, 8, 'F');
+            pdf.setFontSize(8.5);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(20, 20, 20);
+            pdf.text(a.titulo||'', M+5, y+1);
+            pdf.setFontSize(7.5);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(80, 80, 80);
+            const desc = pdf.splitTextToSize(a.descripcion||'', W-M*2-7);
+            desc.slice(0,2).forEach(l => { y += 4.5; pdf.text(l, M+5, y); });
+            y += 6;
+        });
+    }
+
+    // Recomendaciones
+    const recs = d.recomendaciones || [];
+    if (recs.length) {
+        checkY(20);
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(20, 20, 20);
+        pdf.text('Recomendaciones', M, y); y += 7;
+        recs.forEach(r => {
+            checkY(15);
+            const color = r.prioridad==='alta' ? [220,38,38] : r.prioridad==='media' ? [245,158,11] : [34,197,94];
+            pdf.setFillColor(...color);
+            pdf.roundedRect(M, y-3, 18, 5.5, 1, 1, 'F');
+            pdf.setFontSize(7);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(255,255,255);
+            pdf.text((r.prioridad||'').toUpperCase(), M+9, y+0.5, {align:'center'});
+            pdf.setFontSize(8.5);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(20, 20, 20);
+            pdf.text(r.titulo||'', M+22, y+1);
+            pdf.setFontSize(7.5);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(80, 80, 80);
+            const desc = pdf.splitTextToSize(r.descripcion||'', W-M*2-24);
+            desc.slice(0,2).forEach(l => { y += 4.5; pdf.text(l, M+22, y); });
+            if (r.ahorro_estimado) {
+                y += 4.5;
+                pdf.setTextColor(0, 150, 100);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('Ahorro estimado: ' + r.ahorro_estimado, M+22, y);
+            }
+            y += 7;
+        });
+    }
+
+    // Footer en cada página
+    const totalPages = pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFillColor(245, 247, 250);
+        pdf.rect(0, 287, 210, 10, 'F');
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(150, 150, 150);
+        pdf.text('LogiAnalytics — Reporte Confidencial', M, 293);
+        pdf.text('Página ' + i + ' de ' + totalPages, W-M, 293, {align:'right'});
+    }
+
     pdf.save('LogiAnalytics-Reporte.pdf');
 }
 
