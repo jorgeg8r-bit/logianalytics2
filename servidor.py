@@ -32,7 +32,7 @@ def _detectar_col(headers, patrones, excluir=None):
 
 def _to_float(val):
     try:
-        return float(str(val).replace(",", "").strip())
+        return float(str(val).replace(",", "").replace("$", "").replace(" ", "").strip())
     except (ValueError, TypeError):
         return None
 
