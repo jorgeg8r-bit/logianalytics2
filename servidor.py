@@ -45,30 +45,54 @@ def _r(val):
 
 # ── Pre-calculation (stdlib only: csv, io, collections) ───────────────────────
 
-def precalcular(csv_str: str) -> dict:
+def precalcular(csv_str: str, col_map: dict = None) -> dict:
+    """
+    col_map (opcional) — claves: costo, km, ruta, unidad, mes.
+    Si una clave viene con valor no vacío, se usa directamente en lugar de
+    la detección automática para esa columna.
+    Valor especial para ruta: "__combo__<Origen>||<Destino>" combina dos columnas.
+    """
     reader = csv.DictReader(io.StringIO(csv_str))
     headers = reader.fieldnames or []
+    cm = col_map or {}
 
-    # col_costo: buscar costo TOTAL — excluir columnas de tarifa/rate ("por", "km", "rate")
-    # Esto evita que "Costo por Km (MXN)" se confunda con el costo total del viaje.
-    # Prioridad: "total" primero, luego fallback a costo genérico sin "por"/"km".
-    col_costo  = _detectar_col(headers, ["total"],
-                                excluir=["km", "por", "rate", "tarifa"])
-    if col_costo is None:
-        col_costo = _detectar_col(headers, ["costo", "importe", "monto", "flete"],
-                                   excluir=["por", "km", "rate", "tarifa"])
+    # ── Detección automática (fallback cuando col_map no cubre una clave) ──
+    _auto_costo = _detectar_col(headers, ["total"],
+                                 excluir=["km", "por", "rate", "tarifa"])
+    if _auto_costo is None:
+        _auto_costo = _detectar_col(headers, ["costo", "importe", "monto", "flete"],
+                                     excluir=["por", "km", "rate", "tarifa"])
+    _auto_km     = _detectar_col(headers, ["km", "kilo", "iló", "ilom", "ilóm", "distancia"],
+                                  excluir=["costo", "por", "tarifa", "precio", "rate"])
+    _auto_ruta   = _detectar_col(headers, ["ruta", "corredor"])
+    _auto_origen = _detectar_col(headers, ["origen", "origin", "salida"])
+    _auto_dest   = _detectar_col(headers, ["destino", "destination", "llegada"])
+    _auto_unidad = _detectar_col(headers, ["unidad", "placa", "vehiculo", "economico", "tracto",
+                                            "tipo de unidad", "tipo unidad"])
+    _auto_mes    = _detectar_col(headers, ["mes", "month", "periodo", "period"])
+    _auto_anio   = _detectar_col(headers, ["año", "anio", "anyo", "year"])
 
-    # col_km: distancia pura — excluir columnas que mezclen km con costo/tarifa
-    col_km     = _detectar_col(headers, ["km", "kilo", "iló", "ilom", "ilóm", "distancia"],
-                                excluir=["costo", "por", "tarifa", "precio", "rate"])
+    # ── Aplicar col_map: si viene con valor, tiene prioridad sobre auto-detección ──
+    col_costo  = cm.get("costo")  or _auto_costo
+    col_km     = cm.get("km")     or _auto_km
+    col_unidad = cm.get("unidad") or _auto_unidad
+    col_mes    = cm.get("mes")    or _auto_mes
+    col_anio   = _auto_anio  # col_map no expone año; se sigue auto-detectando
 
-    col_ruta   = _detectar_col(headers, ["ruta", "corredor"])
-    col_origen = _detectar_col(headers, ["origen", "origin", "salida"])
-    col_dest   = _detectar_col(headers, ["destino", "destination", "llegada"])
-    col_unidad = _detectar_col(headers, ["unidad", "placa", "vehiculo", "economico", "tracto",
-                                          "tipo de unidad", "tipo unidad"])
-    col_mes    = _detectar_col(headers, ["mes", "month", "periodo", "period"])
-    col_anio   = _detectar_col(headers, ["año", "anio", "anyo", "year"])
+    # Ruta: soporta valor especial "__combo__<Origen>||<Destino>"
+    _ruta_raw  = cm.get("ruta") or ""
+    col_ruta   = None
+    col_origen = _auto_origen
+    col_dest   = _auto_dest
+    if _ruta_raw.startswith("__combo__"):
+        # El frontend mandó "🔗 Origen + Destino (combinar)" — extraer ambas columnas
+        partes = _ruta_raw[len("__combo__"):].split("||", 1)
+        if len(partes) == 2:
+            col_origen, col_dest = partes[0], partes[1]
+    elif _ruta_raw:
+        col_ruta = _ruta_raw
+    else:
+        col_ruta = _auto_ruta
 
     suma_costos = 0.0
     suma_km     = 0.0
@@ -262,10 +286,10 @@ MUESTRA DE DATOS (primeras filas, solo para contexto):
 {muestra}"""
 
 
-def procesar(job_id: str, datos: str):
+def procesar(job_id: str, datos: str, col_map: dict = None):
     jobs[job_id]["status"] = "processing"
     try:
-        calculos = precalcular(datos)
+        calculos = precalcular(datos, col_map)
 
         lines = datos.splitlines()
         muestra = "\n".join(lines[:min(20, len(lines))])
@@ -302,14 +326,21 @@ def index():
 
 @app.route("/analizar", methods=["POST"])
 def analizar():
-    datos = (request.json or {}).get("datos")
+    body  = request.json or {}
+    datos = body.get("datos")
     if not datos:
         return jsonify({"ok": False, "error": "No se recibió el campo 'datos'"}), 400
+
+    # col_map es opcional; si viene del frontend se pasa directo a precalcular()
+    col_map = body.get("col_map") or {}
+    # Sanear: solo conservar claves válidas con valores string no vacíos
+    col_map = {k: v for k, v in col_map.items()
+               if k in ("costo", "km", "ruta", "unidad", "mes") and isinstance(v, str) and v.strip()}
 
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "pending", "analisis": None, "error": None}
 
-    thread = threading.Thread(target=procesar, args=(job_id, datos), daemon=True)
+    thread = threading.Thread(target=procesar, args=(job_id, datos, col_map), daemon=True)
     thread.start()
 
     return jsonify({"ok": True, "job_id": job_id}), 202
