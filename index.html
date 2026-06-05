@@ -1084,6 +1084,8 @@ drop.addEventListener('drop', e => {
 });
 
 /* ── Analyze ── */
+let _pollTimer = null;
+
 async function analizar() {
     const f = document.getElementById('fi').files[0];
     if (!f) return;
@@ -1107,11 +1109,36 @@ async function analizar() {
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const data = await response.json();
         if (!data.ok) throw new Error(data.error);
-        renderDash(data.analisis);
+        _iniciarPolling(data.job_id);
     } catch (e) {
         show('scr-upload');
         alert('Error: ' + e.message);
     }
+}
+
+function _iniciarPolling(jobId) {
+    if (_pollTimer) clearInterval(_pollTimer);
+    _pollTimer = setInterval(async () => {
+        try {
+            const res = await fetch('/resultado/' + jobId);
+            const data = await res.json();
+            if (data.status === 'done') {
+                clearInterval(_pollTimer);
+                _pollTimer = null;
+                renderDash(data.analisis);
+            } else if (data.status === 'error') {
+                clearInterval(_pollTimer);
+                _pollTimer = null;
+                show('scr-upload');
+                alert('Error: ' + (data.error || 'Error desconocido'));
+            }
+        } catch (e) {
+            clearInterval(_pollTimer);
+            _pollTimer = null;
+            show('scr-upload');
+            alert('Error de red: ' + e.message);
+        }
+    }, 3000);
 }
 
 /* ── Reset ── */
