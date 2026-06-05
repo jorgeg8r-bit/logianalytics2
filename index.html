@@ -1648,17 +1648,41 @@ function buildMonthly(data) {
                     : 'rgba(0,212,170,.28)'),
                 borderRadius: 6,
                 borderSkipped: false,
+                yAxisID: 'y',
+            },{
+                label: 'Costo ($)',
+                data: data.map(d => d.costo || 0),
+                type: 'line',
+                borderColor: 'rgba(139,92,246,.9)',
+                backgroundColor: 'rgba(139,92,246,.1)',
+                borderWidth: 2,
+                pointBackgroundColor: 'rgba(139,92,246,.9)',
+                pointRadius: 3,
+                fill: false,
+                tension: 0.3,
+                yAxisID: 'y2',
             }]
         },
         options: {
             responsive: true,
             plugins: {
-                legend: { display: false },
-                tooltip: tooltipCfg()
+                legend: {
+                    display: true,
+                    labels: { color: '#8892a4', font: { family: 'DM Sans', size: 12 } }
+                },
+                tooltip: {
+                    ...tooltipCfg(),
+                    callbacks: {
+                        label: c => c.dataset.label === 'Costo ($)'
+                            ? ` Costo: $${fmt(c.raw)}`
+                            : ` Viajes: ${c.raw}`
+                    }
+                }
             },
             scales: {
                 x: axCfg(),
-                y: axCfg()
+                y: { ...axCfg(), position: 'left', title: { display: true, text: 'Viajes', color: '#4a5568' } },
+                y2: { ...axCfg(), position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Costo (MXN)', color: '#4a5568' } }
             }
         }
     });
