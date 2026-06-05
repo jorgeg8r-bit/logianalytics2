@@ -1392,9 +1392,10 @@ async function mostrarMapeo() {
             reader.readAsArrayBuffer(f);
         });
 
-        // Parse headers from first CSV line (handle quoted commas)
+        // Parse headers using csv-aware split (handles quoted commas and accents)
         _csvHeaders = _csvText.split('\n')[0]
-            .split(',')
+            .match(/("(?:[^"]|"")*"|[^,]*)/g)
+            .filter((_, i) => i % 2 === 0)
             .map(h => h.trim().replace(/^"|"$/g, ''));
 
         document.getElementById('map-filename').textContent = f.name;
