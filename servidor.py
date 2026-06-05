@@ -31,6 +31,11 @@ Responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, si
   "conclusiones": "resumen ejecutivo aqui"
 }}
 
+REGLA IMPORTANTE para costos_por_categoria:
+- Úsalo SOLO si el Excel contiene columnas explícitas de desglose de costos (diesel, casetas, mantenimiento, sueldo, etc.).
+- Si el Excel solo tiene un costo total por viaje sin desglose, devuelve "costos_por_categoria": [].
+- NO inventes ni estimes proporciones.
+
 DATOS:
 {datos}"""
 
