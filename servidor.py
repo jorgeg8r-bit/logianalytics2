@@ -267,7 +267,7 @@ Responde con esta estructura exacta:
      asigna eficiencia "alta"/"media"/"baja" según costo_por_km relativo al promedio general>
   ],
   "unidades_rendimiento": [
-    <una entrada por cada unidad en calculos.por_unidad — copia viajes y costo_total exactos,
+    <una entrada por cada unidad en calculos.por_unidad — copia viajes, costo_total y km_total exactos,
      asigna eficiencia_score 0-100 según costo_promedio_viaje relativo al promedio general>
   ],
   "costos_por_categoria": [],
