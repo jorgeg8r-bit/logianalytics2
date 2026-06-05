@@ -56,8 +56,6 @@ def precalcular(csv_str: str, col_map: dict = None) -> dict:
     headers = reader.fieldnames or []
     cm = col_map or {}
 
-    print(f"[DEBUG] col_map recibido: {cm}", flush=True)
-    print(f"[DEBUG] headers del CSV: {headers}", flush=True)
 
     # ── Detección automática (fallback cuando col_map no cubre una clave) ──
     _auto_costo = _detectar_col(headers, ["total"],
@@ -118,8 +116,7 @@ def precalcular(csv_str: str, col_map: dict = None) -> dict:
         total_filas += 1
 
         if total_filas <= 3:
-            print(f"[DEBUG] fila {total_filas}: costo_raw={row.get(col_costo)!r}, km_raw={row.get(col_km)!r}", flush=True)
-
+        
         costo = _to_float(row.get(col_costo)) if col_costo else None
         km    = _to_float(row.get(col_km))    if col_km    else None
 
@@ -349,11 +346,9 @@ def analizar():
 
     # col_map es opcional; si viene del frontend se pasa directo a precalcular()
     col_map_raw = body.get("col_map") or {}
-    print(f"[DEBUG] /analizar col_map raw: {col_map_raw}", flush=True)
     # Sanear: solo conservar claves válidas con valores string no vacíos
     col_map = {k: v for k, v in col_map_raw.items()
                if k in ("costo", "km", "ruta", "unidad", "mes") and isinstance(v, str) and v.strip()}
-    print(f"[DEBUG] /analizar col_map sanitizado: {col_map}", flush=True)
 
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "pending", "analisis": None, "error": None}
