@@ -983,6 +983,7 @@
                     <div class="chart-ttl">Distribución de Costos</div>
                     <div class="chart-sub">Desglose por categoría</div>
                     <canvas id="ch-costs" height="230"></canvas>
+                    <div id="ch-costs-empty" style="display:none;text-align:center;padding:40px 16px;color:var(--text-2);font-size:13px;line-height:1.6;">Sin desglose de costos disponible.<br>Agrega columnas de Diesel, Casetas, etc.</div>
                 </div>
             </div>
 
@@ -1197,10 +1198,11 @@ function renderDash(d) {
 
     const kpis = d.kpis || [];
 
-    /* Metric strip */
-    document.getElementById('mv1').textContent = kpis[0] ? fmtS(kpis[0].valor) : '—';
-    document.getElementById('mv2').textContent = kpis[1] ? '$' + fmtS(kpis[1].valor) : '—';
-    document.getElementById('mv3').textContent = kpis[2] ? fmtS(kpis[2].valor) : '—';
+    /* Metric strip — reads from d.resumen, not d.kpis */
+    const res = d.resumen || {};
+    document.getElementById('mv1').textContent = res.total_viajes != null ? fmtS(res.total_viajes) : '—';
+    document.getElementById('mv2').textContent = res.costo_total  != null ? '$' + fmtS(res.costo_total) : '—';
+    document.getElementById('mv3').textContent = res.km_totales   != null ? fmtS(res.km_totales) : '—';
     document.getElementById('mv4').textContent = (d.unidades_rendimiento || []).length || '—';
 
     /* KPI cards */
@@ -1277,7 +1279,16 @@ function buildMonthly(data) {
 /* ── Chart: donut costs ── */
 function buildDonut(data) {
     if (charts.d) charts.d.destroy();
-    const ctx = document.getElementById('ch-costs').getContext('2d');
+    const canvas = document.getElementById('ch-costs');
+    const empty  = document.getElementById('ch-costs-empty');
+    if (!data || data.length === 0) {
+        canvas.style.display = 'none';
+        empty.style.display  = 'block';
+        return;
+    }
+    canvas.style.display = '';
+    empty.style.display  = 'none';
+    const ctx = canvas.getContext('2d');
     charts.d = new Chart(ctx, {
         type: 'doughnut',
         data: {
