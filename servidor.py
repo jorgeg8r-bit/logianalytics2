@@ -20,10 +20,12 @@ jobs = {}
 
 # ── Column detection ──────────────────────────────────────────────────────────
 
-def _detectar_col(headers, patrones):
+def _detectar_col(headers, patrones, excluir=None):
     for h in headers:
         hl = h.lower().strip()
         if any(p in hl for p in patrones):
+            if excluir and any(e in hl for e in excluir):
+                continue
             return h
     return None
 
@@ -48,7 +50,9 @@ def precalcular(csv_str: str) -> dict:
     headers = reader.fieldnames or []
 
     col_costo  = _detectar_col(headers, ["costo", "importe", "monto", "precio", "tarifa", "flete"])
-    col_km     = _detectar_col(headers, ["km", "kilo", "iló", "ilom", "ilóm", "distancia"])
+    # Exclude cost-rate columns (e.g. "Costo por Km") from pure-distance detection
+    col_km     = _detectar_col(headers, ["km", "kilo", "iló", "ilom", "ilóm", "distancia"],
+                                excluir=["costo", "por", "tarifa", "precio"])
     col_ruta   = _detectar_col(headers, ["ruta", "corredor"])
     col_origen = _detectar_col(headers, ["origen", "origin", "salida"])
     col_dest   = _detectar_col(headers, ["destino", "destination", "llegada"])

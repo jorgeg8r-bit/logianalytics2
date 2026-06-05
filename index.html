@@ -1247,6 +1247,14 @@ function renderDash(d) {
 function buildMonthly(data) {
     if (charts.m) charts.m.destroy();
     const ctx = document.getElementById('ch-monthly').getContext('2d');
+    if (!data || data.length === 0) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.fillStyle = '#4a5568';
+        ctx.font = '13px DM Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Sin datos de período disponibles', ctx.canvas.width / 2, ctx.canvas.height / 2);
+        return;
+    }
     const n = data.length;
     charts.m = new Chart(ctx, {
         type: 'bar',
@@ -1354,13 +1362,15 @@ function buildRoutes(routes) {
     }
     const maxC = Math.max(...routes.map(r => Number(r.costo_km)));
     routes.forEach(r => {
+        const ck = Number(r.costo_km);
+        const ckDisplay = isNaN(ck) || ck === 0 ? '—' : '$' + ck.toFixed(2);
         const pct = maxC > 0 ? (Number(r.costo_km) / maxC * 100).toFixed(1) : 0;
         list.innerHTML += `
         <div class="route-row">
             <div class="route-hdr">
                 <div class="route-name">${r.ruta}</div>
                 <div class="route-meta">
-                    <div class="route-cost">$${Number(r.costo_km).toFixed(2)}/km</div>
+                    <div class="route-cost">${ckDisplay}/km</div>
                     <span class="efic ${r.eficiencia}">${r.eficiencia}</span>
                 </div>
             </div>
