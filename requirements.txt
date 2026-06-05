@@ -2,5 +2,4 @@ flask
 flask-cors
 anthropic
 openpyxl
-pandas
 gunicorn
