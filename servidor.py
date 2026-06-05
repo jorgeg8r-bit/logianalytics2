@@ -117,6 +117,9 @@ def precalcular(csv_str: str, col_map: dict = None) -> dict:
     for row in reader:
         total_filas += 1
 
+        if total_filas <= 3:
+            print(f"[DEBUG] fila {total_filas}: costo_raw={row.get(col_costo)!r}, km_raw={row.get(col_km)!r}", flush=True)
+
         costo = _to_float(row.get(col_costo)) if col_costo else None
         km    = _to_float(row.get(col_km))    if col_km    else None
 
