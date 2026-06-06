@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Operis — Consultoría de Automatización</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --black: #080a0e;
+  --dark: #0d1117;
+  --card: #111820;
+  --border: rgba(255,255,255,.07);
+  --green: #00e5a0;
+  --green-dim: rgba(0,229,160,.12);
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --white: #f0f4ff;
+  --muted: #6b7280;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--black);
+  color: var(--white);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+}
+
+/* ─── NOISE OVERLAY ─── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── NAV ─── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 48px;
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,10,14,.8);
+}
+.nav-logo {
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: var(--green);
+}
+.nav-cta {
+  background: var(--green);
+  color: var(--black);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px 22px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity .2s;
+}
+.nav-cta:hover { opacity: .85; }
+
+/* ─── HERO ─── */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 120px 48px 80px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-glow {
+  position: absolute;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(0,229,160,.15) 0%, transparent 70%);
+  top: -100px; right: -100px;
+  pointer-events: none;
+}
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--green-dim);
+  border: 1px solid rgba(0,229,160,.25);
+  color: var(--green);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 1.5px;
+  padding: 6px 14px;
+  border-radius: 100px;
+  margin-bottom: 32px;
+  width: fit-content;
+}
+.hero-tag::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .4; transform: scale(1.5); }
+}
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(64px, 9vw, 120px);
+  line-height: .95;
+  letter-spacing: 2px;
+  max-width: 900px;
+  margin-bottom: 28px;
+}
+.hero h1 span { color: var(--green); }
+.hero p {
+  font-size: 18px;
+  color: var(--muted);
+  max-width: 560px;
+  line-height: 1.7;
+  margin-bottom: 48px;
+}
+.hero-actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.btn-primary {
+  background: var(--green);
+  color: var(--black);
+  font-weight: 700;
+  font-size: 15px;
+  padding: 16px 32px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform .2s, box-shadow .2s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,229,160,.3);
+}
+.btn-ghost {
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: color .2s;
+}
+.btn-ghost:hover { color: var(--white); }
+
+/* ─── STATS ROW ─── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 0;
+}
+.stat {
+  background: var(--black);
+  padding: 40px 48px;
+  position: relative;
+  overflow: hidden;
+}
+.stat::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--green);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .6s ease;
+}
+.stat:hover::before { transform: scaleX(1); }
+.stat-num {
+  font-family: var(--font-display);
+  font-size: 56px;
+  line-height: 1;
+  color: var(--green);
+  margin-bottom: 8px;
+}
+.stat-label {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ─── PROBLEM SECTION ─── */
+.section {
+  padding: 100px 48px;
+  position: relative;
+}
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--green);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 5vw, 64px);
+  line-height: 1.05;
+  margin-bottom: 24px;
+  letter-spacing: 1px;
+}
+.section-title span { color: var(--green); }
+
+/* ─── COST CARDS ─── */
+.cost-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 56px;
+}
+.cost-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .3s, transform .3s;
+}
+.cost-card:hover {
+  border-color: rgba(0,229,160,.3);
+  transform: translateY(-4px);
+}
+.cost-card-icon {
+  font-size: 32px;
+  margin-bottom: 20px;
+}
+.cost-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.cost-card p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+.cost-badge {
+  display: inline-flex;
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.25);
+  color: #ef4444;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 100px;
+}
+
+/* ─── AUTOMATION LIST ─── */
+.auto-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 56px;
+}
+.auto-item {
+  background: var(--card);
+  padding: 32px 36px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  transition: background .2s;
+}
+.auto-item:hover { background: #151d27; }
+.auto-item-icon {
+  width: 40px; height: 40px;
+  background: var(--green-dim);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.auto-item-content h4 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.auto-item-content p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.auto-item-time {
+  margin-top: 10px;
+  display: flex; gap: 12px; align-items: center;
+}
+.time-before {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #ef4444;
+  text-decoration: line-through;
+}
+.time-arrow { color: var(--muted); font-size: 12px; }
+.time-after {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--green);
+  font-weight: 700;
+}
+
+/* ─── HOW IT WORKS ─── */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-top: 56px;
+  position: relative;
+}
+.steps::before {
+  content: '';
+  position: absolute;
+  top: 32px; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+}
+.step {
+  text-align: center;
+  position: relative;
+}
+.step-num {
+  width: 64px; height: 64px;
+  background: var(--green);
+  color: var(--black);
+  font-family: var(--font-display);
+  font-size: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+.step h4 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.step p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+/* ─── ROI SECTION ─── */
+.roi-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+  margin-top: 56px;
+}
+.roi-numbers {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.roi-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.roi-row-label { font-size: 14px; color: var(--muted); }
+.roi-row-val {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--green);
+}
+.roi-row-val.red { color: #ef4444; }
+.roi-chart {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+}
+.roi-chart h4 { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.bar-label { font-size: 12px; color: var(--muted); width: 120px; flex-shrink: 0; }
+.bar-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--green);
+  transition: width 1.5s cubic-bezier(.16,1,.3,1);
+}
+.bar-fill.red { background: #ef4444; }
+.bar-val { font-family: var(--font-mono); font-size: 11px; color: var(--muted); width: 60px; text-align: right; }
+
+/* ─── CTA ─── */
+.cta-section {
+  padding: 100px 48px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.cta-glow {
+  position: absolute;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(0,229,160,.12) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.cta-section h2 {
+  font-family: var(--font-display);
+  font-size: clamp(48px, 6vw, 80px);
+  letter-spacing: 2px;
+  line-height: 1;
+  margin-bottom: 24px;
+}
+.cta-section h2 span { color: var(--green); }
+.cta-section p {
+  font-size: 17px;
+  color: var(--muted);
+  max-width: 480px;
+  margin: 0 auto 48px;
+  line-height: 1.7;
+}
+.cta-box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: var(--card);
+  border: 1px solid rgba(0,229,160,.25);
+  border-radius: 16px;
+  padding: 40px 56px;
+  max-width: 480px;
+}
+.cta-box-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 1px;
+  color: var(--green);
+}
+.cta-box p {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.cta-guarantee {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ─── FOOTER ─── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.footer-logo { font-family: var(--font-display); font-size: 18px; letter-spacing: 2px; color: var(--green); }
+.footer-text { font-size: 12px; color: var(--muted); }
+
+/* ─── ANIMATIONS ─── */
+.fade-up {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity .7s ease, transform .7s ease;
+}
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  nav { padding: 16px 24px; }
+  .hero { padding: 100px 24px 60px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat { padding: 28px 24px; }
+  .section { padding: 70px 24px; }
+  .cost-grid { grid-template-columns: 1fr; }
+  .auto-grid { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: repeat(2, 1fr); }
+  .steps::before { display: none; }
+  .roi-wrap { grid-template-columns: 1fr; }
+  .cta-section { padding: 70px 24px; }
+  footer { padding: 24px; flex-direction: column; gap: 12px; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">OPERIS</div>
+  <a href="https://wa.me/528119159600?text=Hola%2C%20quiero%20agendar%20un%20diagn%C3%B3stico%20gratuito%20con%20Operis" target="_blank" class="nav-cta">Diagnóstico Gratis →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-tag">CONSULTORÍA DE IA · NUEVO LEÓN</div>
+  <h1>DEJA DE PAGAR<br>POR <span>TRABAJO</span><br>MANUAL</h1>
+  <p>Automatizamos los procesos repetitivos de tu empresa. Tu equipo deja de hacer lo que una IA puede hacer mejor, más rápido y sin errores.</p>
+  <div class="hero-actions">
+    <a href="#contacto" class="btn-primary">
+      ⚡ Diagnóstico gratuito
+    </a>
+    <a href="#como" class="btn-ghost">
+      Ver cómo funciona →
+    </a>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat fade-up">
+    <div class="stat-num" data-target="99">0</div>
+    <div class="stat-label">% reducción en<br>errores humanos</div>
+  </div>
+  <div class="stat fade-up" style="transition-delay:.1s">
+    <div class="stat-num" style="font-size:40px">Sin límite</div>
+    <div class="stat-label">En ahorros potenciales<br>por empresa</div>
+  </div>
+  <div class="stat fade-up" style="transition-delay:.2s">
+    <div class="stat-num" data-target="2" data-suffix=" sem">0 sem</div>
+    <div class="stat-label">Tiempo de<br>implementación</div>
+  </div>
+  <div class="stat fade-up" style="transition-delay:.3s">
+    <div class="stat-num" data-target="1" data-suffix="er mes">0er mes</div>
+    <div class="stat-label">ROI típico: recuperas<br>la inversión</div>
+  </div>
+</div>
+
+<!-- PROBLEM -->
+<section class="section">
+  <div class="section-label">// el problema</div>
+  <h2 class="section-title fade-up">TU EQUIPO HACE <span>TRABAJO<br>QUE NO DEBERÍA</span> HACER</h2>
+  <p style="color:var(--muted);font-size:16px;max-width:560px;line-height:1.7" class="fade-up">Cada semana, personas bien pagadas en tu empresa dedican horas a tareas que una IA puede hacer en segundos. Eso tiene un costo real.</p>
+
+  <div class="cost-grid">
+    <div class="cost-card fade-up">
+      <div class="cost-card-icon">📊</div>
+      <h3>Reportes manuales de costos</h3>
+      <p>Alguien consolida datos de Excel cada semana, hace tablas, saca promedios y manda PDFs por correo. Horas de trabajo repetitivo.</p>
+      <span class="cost-badge">$15,000 – $25,000 MXN/mes</span>
+    </div>
+    <div class="cost-card fade-up" style="transition-delay:.1s">
+      <div class="cost-card-icon">🧮</div>
+      <h3>Cotizaciones hechas a mano</h3>
+      <p>Cada cotización requiere revisar históricos, calcular costos por ruta y validar con el jefe. Un proceso de 2 horas que debería tomar 2 minutos.</p>
+      <span class="cost-badge">$20,000 – $40,000 MXN/mes</span>
+    </div>
+    <div class="cost-card fade-up" style="transition-delay:.2s">
+      <div class="cost-card-icon">📋</div>
+      <h3>Seguimiento de flota en Excel</h3>
+      <p>Alguien actualiza manualmente el estado de cada unidad, kilometraje y mantenimiento. Sin alertas automáticas, sin visibilidad en tiempo real.</p>
+      <span class="cost-badge">$10,000 – $20,000 MXN/mes</span>
+    </div>
+  </div>
+</section>
+
+<!-- AUTOMATION -->
+<section class="section" style="background: var(--dark);">
+  <div class="section-label">// la solución</div>
+  <h2 class="section-title fade-up">LO QUE <span>AUTOMATIZAMOS</span><br>EN TU OPERACIÓN</h2>
+
+  <div class="auto-grid">
+    <div class="auto-item fade-up">
+      <div class="auto-item-icon">📈</div>
+      <div class="auto-item-content">
+        <h4>Análisis de costos y rutas</h4>
+        <p>Dashboard en tiempo real con costo por km, eficiencia de flota y alertas de sobrecosto.</p>
+        <div class="auto-item-time">
+          <span class="time-before">3 horas manual</span>
+          <span class="time-arrow">→</span>
+          <span class="time-after">2 minutos IA</span>
+        </div>
+      </div>
+    </div>
+    <div class="auto-item fade-up" style="transition-delay:.1s">
+      <div class="auto-item-icon">📬</div>
+      <div class="auto-item-content">
+        <h4>Reportes automáticos</h4>
+        <p>Reporte semanal de operaciones generado y enviado solo por correo o WhatsApp.</p>
+        <div class="auto-item-time">
+          <span class="time-before">4 horas manual</span>
+          <span class="time-arrow">→</span>
+          <span class="time-after">0 horas IA</span>
+        </div>
+      </div>
+    </div>
+    <div class="auto-item fade-up" style="transition-delay:.1s">
+      <div class="auto-item-icon">🔔</div>
+      <div class="auto-item-content">
+        <h4>Alertas de presupuesto</h4>
+        <p>Aviso automático por WhatsApp cuando una ruta supera el costo establecido.</p>
+        <div class="auto-item-time">
+          <span class="time-before">Revisión manual</span>
+          <span class="time-arrow">→</span>
+          <span class="time-after">Alerta instantánea</span>
+        </div>
+      </div>
+    </div>
+    <div class="auto-item fade-up" style="transition-delay:.2s">
+      <div class="auto-item-icon">💬</div>
+      <div class="auto-item-content">
+        <h4>Cotizaciones con IA</h4>
+        <p>Cotización automática basada en historial real de costos por ruta y tipo de carga.</p>
+        <div class="auto-item-time">
+          <span class="time-before">2 horas manual</span>
+          <span class="time-arrow">→</span>
+          <span class="time-after">2 minutos IA</span>
+        </div>
+      </div>
+    </div>
+    <div class="auto-item fade-up" style="transition-delay:.2s">
+      <div class="auto-item-icon">🚛</div>
+      <div class="auto-item-content">
+        <h4>Seguimiento de flota</h4>
+        <p>Alertas automáticas de mantenimiento preventivo y rendimiento por unidad.</p>
+        <div class="auto-item-time">
+          <span class="time-before">Revisión semanal</span>
+          <span class="time-arrow">→</span>
+          <span class="time-after">Tiempo real</span>
+        </div>
+      </div>
+    </div>
+    <div class="auto-item fade-up" style="transition-delay:.3s">
+      <div class="auto-item-icon">📊</div>
+      <div class="auto-item-content">
+        <h4>KPIs ejecutivos</h4>
+        <p>Dashboard para dirección con los indicadores clave de la operación actualizados al instante.</p>
+        <div class="auto-item-time">
+          <span class="time-before">Reporte mensual</span>
+          <span class="time-arrow">→</span>
+          <span class="time-after">Diario automático</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="como">
+  <div class="section-label">// cómo trabajamos</div>
+  <h2 class="section-title fade-up">6 PASOS PARA <span>TRANSFORMAR</span><br>TU OPERACIÓN</h2>
+
+  <div class="steps" style="grid-template-columns: repeat(3,1fr)">
+    <div class="step fade-up">
+      <div class="step-num">1</div>
+      <h4>Diagnóstico de procesos</h4>
+      <p>Mapeamos todo lo que hace tu equipo manualmente. Identificamos ineficiencias, cuellos de botella y tareas repetitivas.</p>
+    </div>
+    <div class="step fade-up" style="transition-delay:.1s">
+      <div class="step-num">2</div>
+      <h4>Análisis de datos reales</h4>
+      <p>Con tu información actual calculamos exactamente cuánto tiempo y dinero se pierde en cada proceso. Sin suposiciones.</p>
+    </div>
+    <div class="step fade-up" style="transition-delay:.15s">
+      <div class="step-num">3</div>
+      <h4>Propuesta personalizada</h4>
+      <p>Diseñamos qué automatizar primero según impacto y costo. Cada solución es específica para tu operación.</p>
+    </div>
+    <div class="step fade-up" style="transition-delay:.2s">
+      <div class="step-num">4</div>
+      <h4>Implementación</h4>
+      <p>Construimos e integramos las automatizaciones en tu operación actual. Sin interrumpir tu flujo de trabajo.</p>
+    </div>
+    <div class="step fade-up" style="transition-delay:.25s">
+      <div class="step-num">5</div>
+      <h4>Capacitación del equipo</h4>
+      <p>Tu equipo aprende a usar las nuevas herramientas. Acompañamiento en los primeros meses de operación.</p>
+    </div>
+    <div class="step fade-up" style="transition-delay:.3s">
+      <div class="step-num">6</div>
+      <h4>Mejora continua</h4>
+      <p>Monitoreamos resultados y seguimos identificando nuevos procesos que optimizar conforme crece tu operación.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ROI -->
+<section class="section" style="background: var(--dark);">
+  <div class="section-label">// el retorno</div>
+  <h2 class="section-title fade-up">NÚMEROS QUE <span>JUSTIFICAN</span><br>LA DECISIÓN</h2>
+
+  <div class="roi-wrap">
+    <div class="roi-numbers fade-up">
+      <div class="roi-row">
+        <span class="roi-row-label">Inversión mensual</span>
+        <span class="roi-row-val">Según proyecto</span>
+      </div>
+      <div class="roi-row">
+        <span class="roi-row-label">Ahorro típico en personal</span>
+        <span class="roi-row-val">$15,000–$75,000</span>
+      </div>
+      <div class="roi-row">
+        <span class="roi-row-label">Reducción en costos operativos</span>
+        <span class="roi-row-val">5–8%</span>
+      </div>
+      <div class="roi-row" style="border-color: rgba(0,229,160,.3);">
+        <span class="roi-row-label" style="color:var(--white);font-weight:600">Tiempo típico de recuperación</span>
+        <span class="roi-row-val" style="font-size:28px">Primer mes</span>
+      </div>
+    </div>
+    <div class="roi-chart fade-up" style="transition-delay:.2s">
+      <h4>Costo mensual: manual vs automatizado</h4>
+      <div class="bar-row">
+        <span class="bar-label">Reportes manuales</span>
+        <div class="bar-track"><div class="bar-fill red" style="width:0%" data-width="85%"></div></div>
+        <span class="bar-val">$20K</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Con automatización</span>
+        <div class="bar-track"><div class="bar-fill" style="width:0%" data-width="18%"></div></div>
+        <span class="bar-val">$3.5K</span>
+      </div>
+      <div class="bar-row" style="margin-top:24px">
+        <span class="bar-label">Errores humanos</span>
+        <div class="bar-track"><div class="bar-fill red" style="width:0%" data-width="90%"></div></div>
+        <span class="bar-val">Alto</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Con IA</span>
+        <div class="bar-track"><div class="bar-fill" style="width:0%" data-width="10%"></div></div>
+        <span class="bar-val">Mínimo</span>
+      </div>
+      <div class="bar-row" style="margin-top:24px">
+        <span class="bar-label">Tiempo de reporte</span>
+        <div class="bar-track"><div class="bar-fill red" style="width:0%" data-width="95%"></div></div>
+        <span class="bar-val">4 horas</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Con automatización</span>
+        <div class="bar-track"><div class="bar-fill" style="width:0%" data-width="2%"></div></div>
+        <span class="bar-val">2 min</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="contacto">
+  <div class="cta-glow"></div>
+  <h2 class="fade-up">EL DIAGNÓSTICO<br>ES <span>GRATIS</span></h2>
+  <p class="fade-up">Sin compromiso. Sin contratos. Te mostramos exactamente cuánto dinero estás dejando en la mesa antes de pedirte un peso.</p>
+  <div class="cta-box fade-up">
+    <div class="cta-box-title">¿QUÉ PASA EN EL DIAGNÓSTICO?</div>
+    <p>Platicamos sobre cómo opera tu empresa hoy</p>
+    <p>Identificamos los procesos que más tiempo y dinero consumen</p>
+    <p>Te mostramos con tus propios datos qué se puede automatizar</p>
+    <p>Sin costo, sin compromiso, sin contratos que firmar</p>
+    <a href="https://wa.me/528119159600?text=Hola%2C%20quiero%20agendar%20un%20diagn%C3%B3stico%20gratuito%20con%20Operis" target="_blank" class="btn-primary" style="width:100%;justify-content:center;margin-top:8px">
+      Agendar diagnóstico gratuito →
+    </a>
+    <p class="cta-guarantee">El diagnóstico no tiene costo ni compromiso.<br>Solo agendas una llamada de 30 minutos.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">OPERIS</div>
+  <div class="footer-text">Operis · Consultoría de Automatización · Nuevo León</div>
+</footer>
+
+<script>
+// Intersection Observer for animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      // Animate bars
+      e.target.querySelectorAll('.bar-fill[data-width]').forEach(bar => {
+        setTimeout(() => bar.style.width = bar.dataset.width, 200);
+      });
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+// Counter animation
+const countObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const el = e.target;
+      const target = parseInt(el.dataset.target);
+      const prefix = el.dataset.prefix || '';
+      const suffix = el.dataset.suffix || '';
+      let current = 0;
+      const step = target / 60;
+      const timer = setInterval(() => {
+        current += step;
+        if (current >= target) {
+          current = target;
+          clearInterval(timer);
+        }
+        el.textContent = prefix + Math.floor(current) + suffix;
+      }, 16);
+      countObserver.unobserve(el);
+    }
+  });
+}, { threshold: 0.5 });
+
+document.querySelectorAll('[data-target]').forEach(el => countObserver.observe(el));
+
+// Bar animations on scroll
+const barObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.querySelectorAll('.bar-fill[data-width]').forEach((bar, i) => {
+        setTimeout(() => bar.style.width = bar.dataset.width, i * 150);
+      });
+      barObserver.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.3 });
+
+document.querySelectorAll('.roi-chart').forEach(el => barObserver.observe(el));
+</script>
+</body>
+</html>

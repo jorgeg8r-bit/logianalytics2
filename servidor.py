@@ -334,6 +334,10 @@ def procesar(job_id: str, datos: str, col_map: dict = None):
 def index():
     return send_file("index.html")
 
+@app.route("/landing")
+def landing():
+    return send_file("landing.html")
+
 
 @app.route("/analizar", methods=["POST"])
 def analizar():
