@@ -1,0 +1,1852 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogiAnalytics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --bg:         #07090f;
+            --sidebar-bg: #0a0c14;
+            --card:       #0d1117;
+            --border:     #1a2030;
+            --border-2:   #222c3c;
+            --accent:     #00d4aa;
+            --accent-dim: rgba(0,212,170,.10);
+            --blue:       #3b82f6;
+            --blue-dim:   rgba(59,130,246,.10);
+            --amber:      #f59e0b;
+            --purple:     #8b5cf6;
+            --red:        #ef4444;
+            --green:      #10b981;
+            --text:       #eef2ff;
+            --text-2:     #8892a4;
+            --text-3:     #4a5568;
+            --sw:         256px;
+        }
+
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Syne on all headings and big numbers */
+        h1, h2, h3, h4,
+        .syne, .metric-val, .kpi-val, .section-ttl,
+        .sidebar-brand, .btn-main { font-family: 'Syne', sans-serif; }
+
+        /* ────────────────────────────────────────
+           SIDEBAR
+        ──────────────────────────────────────── */
+        .sidebar {
+            width: var(--sw);
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            inset: 0 auto 0 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 200;
+        }
+
+        .sidebar-logo {
+            padding: 22px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--accent) 0%, #009f80 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-brand {
+            font-size: 15.5px;
+            font-weight: 700;
+            letter-spacing: -.3px;
+            color: var(--text);
+        }
+        .sidebar-brand em { color: var(--accent); font-style: normal; }
+
+        .sidebar-ver {
+            margin-left: auto;
+            font-size: 10px;
+            font-weight: 600;
+            background: var(--accent-dim);
+            color: var(--accent);
+            padding: 2px 8px;
+            border-radius: 20px;
+            border: 1px solid rgba(0,212,170,.18);
+            white-space: nowrap;
+        }
+
+        .sidebar-nav { flex: 1; padding: 14px 0; overflow-y: auto; }
+
+        .nav-group {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-3);
+            font-weight: 600;
+            padding: 10px 18px 4px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 9px 18px;
+            color: var(--text-2);
+            cursor: pointer;
+            border-left: 2px solid transparent;
+            font-size: 13.5px;
+            font-weight: 400;
+            transition: all .15s;
+            position: relative;
+        }
+        .nav-item:hover { background: rgba(255,255,255,.025); color: var(--text); }
+        .nav-item.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+            border-left-color: var(--accent);
+            font-weight: 500;
+        }
+
+        .nav-ico { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+
+        .nav-pill {
+            margin-left: auto;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 20px;
+        }
+        .nav-pill.danger { background: rgba(239,68,68,.18); color: var(--red); }
+        .nav-pill.muted  { background: var(--border); color: var(--text-3); display:none; }
+
+        /* Client card */
+        .client-card {
+            margin: 0 12px 16px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            padding: 14px 15px;
+        }
+
+        .client-top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .client-ava {
+            width: 32px; height: 32px;
+            background: linear-gradient(135deg, var(--blue), var(--purple));
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .client-info { min-width: 0; }
+        .client-name {
+            font-size: 12.5px;
+            font-weight: 600;
+            font-family: 'Syne', sans-serif;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text);
+        }
+        .client-file {
+            font-size: 11px;
+            color: var(--text-3);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .client-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+        }
+        .status-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            transition: background .3s;
+        }
+
+        /* ────────────────────────────────────────
+           MAIN + TOPBAR
+        ──────────────────────────────────────── */
+        .main {
+            margin-left: var(--sw);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .topbar {
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 13px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            gap: 16px;
+        }
+
+        .topbar-title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -.3px;
+        }
+        .topbar-sub {
+            font-size: 12px;
+            color: var(--text-2);
+            margin-top: 1px;
+        }
+
+        .topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid var(--border-2);
+            color: var(--text-2);
+        }
+        .btn-ghost:hover { border-color: var(--text-3); color: var(--text); background: rgba(255,255,255,.03); }
+
+        .btn-main {
+            background: var(--accent);
+            color: #07090f;
+            font-weight: 700;
+            letter-spacing: -.2px;
+        }
+        .btn-main:hover { background: #00bfa0; }
+
+        /* ────────────────────────────────────────
+           CONTENT WRAPPER
+        ──────────────────────────────────────── */
+        .content { padding: 26px 30px; flex: 1; }
+
+        /* ────────────────────────────────────────
+           UPLOAD SCREEN
+        ──────────────────────────────────────── */
+        #scr-upload {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 63px);
+            padding: 40px 20px;
+        }
+
+        .upload-hero { text-align: center; margin-bottom: 38px; }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--accent-dim);
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(0,212,170,.2);
+            margin-bottom: 18px;
+        }
+
+        .upload-hero h2 {
+            font-size: 34px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1.1;
+            margin-bottom: 10px;
+        }
+        .upload-hero h2 span { color: var(--accent); }
+        .upload-hero p { color: var(--text-2); font-size: 15px; }
+
+        .upload-box {
+            background: var(--card);
+            border: 1.5px dashed var(--border-2);
+            border-radius: 20px;
+            padding: 52px 60px;
+            width: 440px;
+            text-align: center;
+            transition: border-color .2s, background .2s;
+        }
+        .upload-box:hover, .upload-box.over {
+            border-color: var(--accent);
+            background: rgba(0,212,170,.03);
+        }
+
+        .upload-ico { font-size: 46px; display: block; margin-bottom: 18px; }
+
+        .upload-box h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .upload-box p { font-size: 13px; color: var(--text-2); margin-bottom: 22px; }
+
+        .btn-pick {
+            background: var(--border-2);
+            color: var(--text);
+            border: none;
+            padding: 9px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            transition: background .15s;
+        }
+        .btn-pick:hover { background: #2d3748; }
+
+        .picked-name {
+            font-size: 12px;
+            color: var(--accent);
+            margin-top: 12px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .btn-go {
+            width: 100%;
+            margin-top: 20px;
+            padding: 13px;
+            background: var(--accent);
+            color: #07090f;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Syne', sans-serif;
+            cursor: pointer;
+            letter-spacing: -.2px;
+            transition: background .15s, transform .1s;
+        }
+        .btn-go:hover { background: #00bfa0; }
+        .btn-go:active { transform: scale(.98); }
+        .btn-go:disabled { background: var(--border); color: var(--text-3); cursor: not-allowed; transform: none; }
+
+        /* ────────────────────────────────────────
+           LOADING SCREEN
+        ──────────────────────────────────────── */
+        #scr-loading {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 63px);
+            text-align: center;
+        }
+
+        .ring-wrap {
+            position: relative;
+            width: 72px; height: 72px;
+            margin-bottom: 26px;
+        }
+        .ring {
+            width: 72px; height: 72px;
+            border: 3px solid var(--border-2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .9s linear infinite;
+        }
+        .ring-inner {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .load-title { font-size: 19px; font-weight: 700; font-family: 'Syne', sans-serif; margin-bottom: 6px; }
+        .load-sub { font-size: 13px; color: var(--text-2); max-width: 300px; }
+
+        .dots {
+            display: flex; gap: 5px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        .dots span {
+            width: 7px; height: 7px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: blink 1.4s ease-in-out infinite;
+        }
+        .dots span:nth-child(2) { animation-delay: .22s; }
+        .dots span:nth-child(3) { animation-delay: .44s; }
+        @keyframes blink {
+            0%,80%,100% { transform:scale(.55); opacity:.35; }
+            40%          { transform:scale(1);   opacity:1;   }
+        }
+
+        /* ────────────────────────────────────────
+           DASHBOARD
+        ──────────────────────────────────────── */
+        #scr-dash { display: none; }
+
+        .sec { margin-bottom: 24px; }
+
+        .sec-hdr {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .section-ttl { font-size: 14.5px; font-weight: 700; letter-spacing: -.2px; }
+        .sec-tag {
+            font-size: 11px;
+            background: var(--border);
+            color: var(--text-2);
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        /* ── Metric strip ── */
+        .metric-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .m-block {
+            background: var(--card);
+            padding: 20px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .m-lbl {
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: var(--text-3);
+            font-weight: 600;
+        }
+        .metric-val {
+            font-size: 30px;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            line-height: 1;
+        }
+        .m-unit { font-size: 11px; color: var(--text-2); }
+
+        .m-block:nth-child(1) .metric-val { color: var(--accent); }
+        .m-block:nth-child(2) .metric-val { color: var(--blue);   }
+        .m-block:nth-child(3) .metric-val { color: var(--amber);  }
+        .m-block:nth-child(4) .metric-val { color: var(--purple); }
+
+        /* ── KPI cards ── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .kpi-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px 20px 16px;
+            position: relative;
+            overflow: hidden;
+            cursor: default;
+            transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+        }
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+        }
+        .kpi-card:hover { transform: translateY(-3px); }
+
+        .kpi-card.ka::before { background: var(--accent); }
+        .kpi-card.ka:hover   { border-color: rgba(0,212,170,.28); box-shadow: 0 14px 40px rgba(0,212,170,.1); }
+
+        .kpi-card.kb::before { background: var(--blue); }
+        .kpi-card.kb:hover   { border-color: rgba(59,130,246,.28); box-shadow: 0 14px 40px rgba(59,130,246,.1); }
+
+        .kpi-card.kc::before { background: var(--amber); }
+        .kpi-card.kc:hover   { border-color: rgba(245,158,11,.28); box-shadow: 0 14px 40px rgba(245,158,11,.1); }
+
+        .kpi-card.kd::before { background: var(--purple); }
+        .kpi-card.kd:hover   { border-color: rgba(139,92,246,.28); box-shadow: 0 14px 40px rgba(139,92,246,.1); }
+
+        .kpi-lbl {
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: var(--text-2);
+            font-weight: 600;
+            margin-bottom: 9px;
+        }
+        .kpi-val {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            line-height: 1;
+            margin-bottom: 3px;
+        }
+        .kpi-unit { font-size: 11.5px; color: var(--text-2); }
+        .kpi-foot {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 12px;
+            padding-top: 11px;
+            border-top: 1px solid var(--border);
+        }
+
+        .trend {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+        .trend.up   { background: rgba(16,185,129,.12); color: var(--green); }
+        .trend.down { background: rgba(239,68,68,.12);  color: var(--red);   }
+        .trend.flat { background: rgba(148,163,184,.1); color: var(--text-2);}
+
+        .trend-lbl { font-size: 11px; color: var(--text-3); }
+
+        /* ── Conclusion card (dark green) ── */
+        .concl-card {
+            background: linear-gradient(135deg, rgba(0,212,170,.08) 0%, rgba(0,168,138,.04) 100%);
+            border: 1px solid rgba(0,212,170,.2);
+            border-radius: 14px;
+            padding: 22px 26px 22px 30px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .concl-card::before {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 4px;
+            background: linear-gradient(to bottom, var(--accent), #00896c);
+        }
+
+        .concl-ttl {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'Syne', sans-serif;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 9px;
+        }
+        .concl-body {
+            font-size: 14px;
+            color: rgba(238,242,255,.72);
+            line-height: 1.72;
+        }
+
+        /* ── Charts row ── */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1.35fr 1fr;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .chart-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px 22px;
+        }
+        .chart-ttl { font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif; margin-bottom: 2px; }
+        .chart-sub { font-size: 12px; color: var(--text-2); margin-bottom: 18px; }
+
+        /* ── Route efficiency ── */
+        .route-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px 22px;
+            margin-bottom: 20px;
+        }
+
+        .route-list { display: flex; flex-direction: column; gap: 14px; }
+
+        .route-row { display: flex; flex-direction: column; gap: 6px; }
+
+        .route-hdr {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .route-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 240px;
+        }
+        .route-meta { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+        .route-cost { font-size: 13px; font-weight: 600; font-family: 'Syne', sans-serif; }
+
+        .efic {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 9px;
+            border-radius: 20px;
+            text-transform: capitalize;
+        }
+        .efic.alta  { background: rgba(16,185,129,.14); color: var(--green); }
+        .efic.media { background: rgba(245,158,11,.14);  color: var(--amber); }
+        .efic.baja  { background: rgba(239,68,68,.14);   color: var(--red);   }
+
+        .bar-track {
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width .7s cubic-bezier(.4,0,.2,1);
+        }
+        .bar-fill.alta  { background: linear-gradient(90deg, #10b981, #34d399); }
+        .bar-fill.media { background: linear-gradient(90deg, #f59e0b, #fcd34d); }
+        .bar-fill.baja  { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+        /* ── Units table ── */
+        .table-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .table-hdr {
+            padding: 16px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dtable { width: 100%; border-collapse: collapse; }
+        .dtable th {
+            padding: 10px 18px;
+            text-align: left;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: var(--text-3);
+            font-weight: 600;
+            background: rgba(255,255,255,.01);
+            border-bottom: 1px solid var(--border);
+        }
+        .dtable td {
+            padding: 13px 18px;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(26,32,48,.7);
+            color: var(--text-2);
+        }
+        .dtable tr:last-child td { border-bottom: none; }
+        .dtable tr:hover td { background: rgba(255,255,255,.013); }
+        .dtable .td-name { color: var(--text); font-weight: 500; }
+
+        .sbadge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+        .sbadge.hi  { background: rgba(16,185,129,.12); color: var(--green); }
+        .sbadge.mid { background: rgba(245,158,11,.12);  color: var(--amber); }
+        .sbadge.lo  { background: rgba(239,68,68,.12);   color: var(--red);   }
+
+        /* ── Alerts grid ── */
+        .alerts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .alert-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px 17px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            border-left: 3px solid var(--border);
+            transition: border-color .15s;
+        }
+        .alert-card:hover { border-color: var(--border-2); }
+        .alert-card.critica    { border-left-color: var(--red);   }
+        .alert-card.advertencia{ border-left-color: var(--amber); }
+        .alert-card.info       { border-left-color: var(--blue);  }
+
+        .alert-ico {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .alert-ico.critica     { background: rgba(239,68,68,.12); }
+        .alert-ico.advertencia { background: rgba(245,158,11,.12);}
+        .alert-ico.info        { background: rgba(59,130,246,.12);}
+
+        .alert-body { flex: 1; min-width: 0; }
+        .alert-tipo {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 3px;
+        }
+        .alert-tipo.critica     { color: var(--red);   }
+        .alert-tipo.advertencia { color: var(--amber); }
+        .alert-tipo.info        { color: var(--blue);  }
+
+        .alert-ttl { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+        .alert-desc { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+        .alert-unit { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+        /* ── Recommendations ── */
+        .rec-wrap {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        .rec-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 13px;
+            padding: 17px 22px;
+            border-bottom: 1px solid var(--border);
+            transition: background .15s;
+        }
+        .rec-item:last-child { border-bottom: none; }
+        .rec-item:hover { background: rgba(255,255,255,.013); }
+
+        .rec-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 5px;
+        }
+        .rec-dot.alta  { background: var(--red);    box-shadow: 0 0 7px rgba(239,68,68,.5); }
+        .rec-dot.media { background: var(--amber);  box-shadow: 0 0 7px rgba(245,158,11,.5); }
+        .rec-dot.baja  { background: var(--accent); box-shadow: 0 0 7px rgba(0,212,170,.5); }
+
+        .rec-body { flex: 1; }
+        .rec-pri {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 3px;
+        }
+        .rec-pri.alta  { color: var(--red);    }
+        .rec-pri.media { color: var(--amber);  }
+        .rec-pri.baja  { color: var(--accent); }
+
+        .rec-ttl {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+            font-family: 'Syne', sans-serif;
+        }
+        .rec-desc { font-size: 12.5px; color: var(--text-2); line-height: 1.55; }
+        .rec-save { font-size: 12px; color: var(--accent); font-weight: 600; margin-top: 6px; }
+
+        /* ── Column Mapping Screen ── */
+        #scr-mapping {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 63px);
+            padding: 40px 20px;
+        }
+
+        .map-hero { text-align: center; margin-bottom: 24px; }
+        .map-hero h2 { font-size: 26px; font-weight: 800; letter-spacing: -.8px; margin-bottom: 6px; }
+        .map-hero h2 span { color: var(--accent); }
+        .map-hero p { font-size: 13.5px; color: var(--text-2); }
+
+        .map-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            width: 580px;
+            overflow: hidden;
+        }
+
+        .map-card-header {
+            padding: 18px 26px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            background: rgba(255,255,255,.01);
+        }
+
+        .map-file-ico {
+            width: 38px; height: 38px;
+            background: var(--accent-dim);
+            border: 1px solid rgba(0,212,170,.2);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 17px; flex-shrink: 0;
+        }
+
+        .map-card-title { font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif; }
+        .map-card-sub   { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+
+        .map-body { padding: 4px 0; }
+
+        .map-field {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 13px 26px;
+            border-bottom: 1px solid rgba(26,32,48,.6);
+            transition: background .15s;
+        }
+        .map-field:last-child { border-bottom: none; }
+        .map-field:hover { background: rgba(255,255,255,.011); }
+
+        .map-field-left {
+            display: flex; align-items: center; gap: 11px;
+            flex: 1; min-width: 0;
+        }
+
+        .map-ico {
+            width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 14px;
+        }
+        .map-ico.ci { background: rgba(0,212,170,.10); }
+        .map-ico.ck { background: rgba(59,130,246,.10); }
+        .map-ico.cr { background: rgba(245,158,11,.10); }
+        .map-ico.cu { background: rgba(139,92,246,.10); }
+        .map-ico.cm { background: rgba(16,185,129,.10); }
+
+        .map-field-label { font-size: 13px; font-weight: 600; font-family: 'Syne', sans-serif; }
+        .map-field-hint  { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+        .map-optional {
+            font-size: 10px; font-weight: 600;
+            background: var(--border); color: var(--text-3);
+            padding: 1px 7px; border-radius: 20px; margin-left: 5px;
+        }
+
+        .map-select {
+            width: 200px; flex-shrink: 0;
+            background: var(--bg);
+            border: 1px solid var(--border-2);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12.5px;
+            padding: 8px 30px 8px 11px;
+            cursor: pointer; outline: none;
+            transition: border-color .15s, box-shadow .15s;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234a5568' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 11px center;
+        }
+        .map-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,212,170,.12); }
+        .map-select option { background: #0d1117; color: var(--text); }
+        .map-select.has-val { border-color: rgba(0,212,170,.35); color: var(--accent); }
+
+        .map-footer {
+            padding: 16px 26px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            background: rgba(255,255,255,.01);
+        }
+
+        .map-required-note {
+            font-size: 11.5px; color: var(--text-3); line-height: 1.5; flex: 1;
+        }
+        .map-required-note b { color: var(--text-2); }
+
+        .map-footer-btns { display: flex; gap: 9px; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════════ -->
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="logo-icon">🚛</div>
+        <div class="sidebar-brand">Logi<em>Analytics</em></div>
+        <div class="sidebar-ver">v2</div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-group">Análisis</div>
+
+        <div class="nav-item active" onclick="navClick(this,'sec-resumen')">
+            <span class="nav-ico">📊</span>Resumen
+        </div>
+        <div class="nav-item" onclick="navClick(this,'sec-kpis')">
+            <span class="nav-ico">🎯</span>KPIs
+        </div>
+        <div class="nav-item" onclick="navClick(this,'sec-rutas')">
+            <span class="nav-ico">🗺️</span>Rutas
+        </div>
+        <div class="nav-item" onclick="navClick(this,'sec-unidades')">
+            <span class="nav-ico">🚚</span>Unidades
+        </div>
+
+        <div class="nav-group" style="margin-top:8px">Operaciones</div>
+
+        <div class="nav-item" onclick="navClick(this,'sec-alertas')">
+            <span class="nav-ico">🔔</span>Alertas
+            <span class="nav-pill danger" id="alert-pill" style="display:none"></span>
+        </div>
+        <div class="nav-item" onclick="navClick(this,'sec-recs')">
+            <span class="nav-ico">💡</span>Recomendaciones
+        </div>
+    </nav>
+
+    <div class="client-card">
+        <div class="client-top">
+            <div class="client-ava">🏢</div>
+            <div class="client-info">
+                <div class="client-name" id="cli-name">Sin sesión</div>
+                <div class="client-file" id="cli-file">—</div>
+            </div>
+        </div>
+        <div class="client-status">
+            <div class="status-dot" id="st-dot" style="background:var(--text-3)"></div>
+            <span id="st-lbl" style="color:var(--text-3)">Inactivo</span>
+        </div>
+    </div>
+</aside>
+
+<!-- ══════════════════════════════════════════
+     MAIN
+══════════════════════════════════════════ -->
+<main class="main">
+    <header class="topbar">
+        <div>
+            <div class="topbar-title syne" id="tp-title">Dashboard de Flota</div>
+            <div class="topbar-sub" id="tp-sub">Análisis inteligente de operaciones logísticas</div>
+        </div>
+        <div class="topbar-actions">
+            <button class="btn btn-ghost" onclick="resetear()">↩ Nueva consulta</button>
+            <button class="btn btn-main" id="btn-pdf" onclick="exportPDF()" style="display:none">⬇ Exportar PDF</button>
+        </div>
+    </header>
+
+    <div class="content">
+
+        <!-- ── UPLOAD ── -->
+        <div id="scr-upload">
+            <div class="upload-hero">
+                <div class="hero-badge">✦ Análisis con IA</div>
+                <h2>Analiza tu flota con <span>inteligencia</span></h2>
+                <p>Sube tu Excel y obtén un dashboard completo en segundos</p>
+            </div>
+            <div class="upload-box" id="drop">
+                <span class="upload-ico">📊</span>
+                <h3>Selecciona tu archivo Excel</h3>
+                <p>Arrastra y suelta aquí, o haz clic<br>Formatos: .xlsx · .xls</p>
+                <input type="file" id="fi" accept=".xlsx,.xls" style="display:none" onchange="onPick(this)">
+                <button class="btn-pick" onclick="document.getElementById('fi').click()">Elegir archivo</button>
+                <div class="picked-name" id="fname"></div>
+                <button class="btn-go" id="btn-go" onclick="mostrarMapeo()" disabled>Analizar con IA →</button>
+            </div>
+        </div>
+
+        <!-- ── LOADING ── -->
+        <div id="scr-loading">
+            <div class="ring-wrap">
+                <div class="ring"></div>
+                <div class="ring-inner">🚛</div>
+            </div>
+            <div class="load-title">Analizando tu flota...</div>
+            <div class="load-sub" id="load-sub">Enviando datos a la IA...</div>
+            <div class="dots"><span></span><span></span><span></span></div>
+        </div>
+
+        <!-- ── COLUMN MAPPING ── -->
+        <div id="scr-mapping">
+            <div class="map-hero">
+                <div class="hero-badge">✦ Paso 2 de 2</div>
+                <h2>Confirma tus <span>columnas</span></h2>
+                <p>Indica qué columna del Excel corresponde a cada campo</p>
+            </div>
+            <div class="map-card">
+                <div class="map-card-header">
+                    <div class="map-file-ico">📊</div>
+                    <div>
+                        <div class="map-card-title" id="map-filename">archivo.xlsx</div>
+                        <div class="map-card-sub" id="map-colcount">— columnas detectadas</div>
+                    </div>
+                </div>
+                <div class="map-body">
+                    <!-- Costo Total -->
+                    <div class="map-field">
+                        <div class="map-field-left">
+                            <div class="map-ico ci">💰</div>
+                            <div>
+                                <div class="map-field-label">Costo Total</div>
+                                <div class="map-field-hint">Costo total del viaje en MXN</div>
+                            </div>
+                        </div>
+                        <select class="map-select" id="map-sel-costo" onchange="onMapChange(this)">
+                            <option value="">— Seleccionar —</option>
+                        </select>
+                    </div>
+                    <!-- Kilómetros -->
+                    <div class="map-field">
+                        <div class="map-field-left">
+                            <div class="map-ico ck">📏</div>
+                            <div>
+                                <div class="map-field-label">Kilómetros</div>
+                                <div class="map-field-hint">Distancia del viaje en km</div>
+                            </div>
+                        </div>
+                        <select class="map-select" id="map-sel-km" onchange="onMapChange(this)">
+                            <option value="">— Seleccionar —</option>
+                        </select>
+                    </div>
+                    <!-- Ruta / Origen-Destino -->
+                    <div class="map-field">
+                        <div class="map-field-left">
+                            <div class="map-ico cr">🗺️</div>
+                            <div>
+                                <div class="map-field-label">Ruta <span class="map-optional">opcional</span></div>
+                                <div class="map-field-hint">Columna de ruta o combinación Origen + Destino</div>
+                            </div>
+                        </div>
+                        <select class="map-select" id="map-sel-ruta" onchange="onMapChange(this)">
+                            <option value="">— Seleccionar —</option>
+                        </select>
+                    </div>
+                    <!-- Unidad -->
+                    <div class="map-field">
+                        <div class="map-field-left">
+                            <div class="map-ico cu">🚚</div>
+                            <div>
+                                <div class="map-field-label">Unidad / Vehículo <span class="map-optional">opcional</span></div>
+                                <div class="map-field-hint">Tipo o ID del vehículo</div>
+                            </div>
+                        </div>
+                        <select class="map-select" id="map-sel-unidad" onchange="onMapChange(this)">
+                            <option value="">— Seleccionar —</option>
+                        </select>
+                    </div>
+                    <!-- Fecha / Mes -->
+                    <div class="map-field">
+                        <div class="map-field-left">
+                            <div class="map-ico cm">📅</div>
+                            <div>
+                                <div class="map-field-label">Fecha / Mes <span class="map-optional">opcional</span></div>
+                                <div class="map-field-hint">Para la gráfica de actividad mensual</div>
+                            </div>
+                        </div>
+                        <select class="map-select" id="map-sel-mes" onchange="onMapChange(this)">
+                            <option value="">— Seleccionar —</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="map-footer">
+                    <div class="map-required-note">
+                        <b>Costo Total</b> y <b>Kilómetros</b> son obligatorios.<br>Los demás campos son opcionales.
+                    </div>
+                    <div class="map-footer-btns">
+                        <button class="btn btn-ghost" onclick="volverUpload()">← Cambiar archivo</button>
+                        <button class="btn btn-main" id="btn-confirmar" onclick="confirmarMapeo()">Analizar →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── DASHBOARD ── -->
+        <div id="scr-dash">
+
+            <!-- 1. Metric strip -->
+            <div id="sec-resumen" class="metric-strip">
+                <div class="m-block">
+                    <div class="m-lbl">Total Viajes</div>
+                    <div class="metric-val" id="mv1">—</div>
+                    <div class="m-unit">viajes registrados</div>
+                </div>
+                <div class="m-block">
+                    <div class="m-lbl">Costo Total</div>
+                    <div class="metric-val" id="mv2">—</div>
+                    <div class="m-unit">MXN acumulado</div>
+                </div>
+                <div class="m-block">
+                    <div class="m-lbl">Km Totales</div>
+                    <div class="metric-val" id="mv3">—</div>
+                    <div class="m-unit">kilómetros recorridos</div>
+                </div>
+                <div class="m-block">
+                    <div class="m-lbl">Unidades</div>
+                    <div class="metric-val" id="mv4">—</div>
+                    <div class="m-unit">vehículos activos</div>
+                </div>
+            </div>
+
+            <!-- 2. KPI cards -->
+            <div id="sec-kpis" class="kpi-grid sec"></div>
+
+            <!-- 3. Conclusión ejecutiva -->
+            <div class="concl-card sec">
+                <div class="concl-ttl"><span>✦</span>Conclusión Ejecutiva</div>
+                <div class="concl-body" id="concl-txt">—</div>
+            </div>
+
+            <!-- 4. Charts -->
+            <div class="charts-row sec">
+                <div class="chart-card">
+                    <div class="chart-ttl">Actividad Mensual</div>
+                    <div class="chart-sub">Viajes por período</div>
+                    <canvas id="ch-monthly" height="230"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-ttl">Distribución de Costos</div>
+                    <div class="chart-sub">Desglose por categoría</div>
+                    <canvas id="ch-costs" height="230"></canvas>
+                    <div id="ch-costs-empty" style="display:none;text-align:center;padding:40px 16px;color:var(--text-2);font-size:13px;line-height:1.6;">Sin desglose de costos disponible.<br>Agrega columnas de Diesel, Casetas, etc.</div>
+                </div>
+            </div>
+
+            <!-- 5. Route efficiency -->
+            <div id="sec-rutas" class="route-card sec">
+                <div class="sec-hdr">
+                    <div class="section-ttl">Eficiencia por Ruta</div>
+                    <div class="sec-tag" id="rutas-tag">0 rutas</div>
+                </div>
+                <div class="route-list" id="route-list"></div>
+            </div>
+
+            <!-- 6. Units table -->
+            <div id="sec-unidades" class="table-card sec">
+                <div class="table-hdr">
+                    <div class="section-ttl">Unidades — Rendimiento</div>
+                    <div class="sec-tag" id="units-tag">0 unidades</div>
+                </div>
+                <table class="dtable">
+                    <thead>
+                        <tr>
+                            <th>Unidad</th>
+                            <th>Viajes</th>
+                            <th>Km Total</th>
+                            <th>Costo Total</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="units-tbody"></tbody>
+                </table>
+            </div>
+
+            <!-- 7. Alerts -->
+            <div id="sec-alertas" class="sec">
+                <div class="sec-hdr">
+                    <div class="section-ttl">Alertas Operativas</div>
+                    <div class="sec-tag" id="alert-tag">0 alertas</div>
+                </div>
+                <div class="alerts-grid" id="alerts-grid"></div>
+            </div>
+
+            <!-- 8. Recommendations -->
+            <div id="sec-recs" class="sec">
+                <div class="sec-hdr">
+                    <div class="section-ttl">Recomendaciones</div>
+                </div>
+                <div class="rec-wrap">
+                    <div id="rec-list"></div>
+                </div>
+            </div>
+
+        </div><!-- /scr-dash -->
+    </div><!-- /content -->
+</main>
+
+<script>
+'use strict';
+
+const PALETTE = ['#00d4aa','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899','#84cc16'];
+let charts = {};
+
+/* ── Screens ── */
+function show(id) {
+    ['scr-upload','scr-mapping','scr-loading','scr-dash'].forEach(s => {
+        const el = document.getElementById(s);
+        if (s === id) {
+            el.style.display = (s === 'scr-dash') ? 'block' : 'flex';
+        } else {
+            el.style.display = 'none';
+        }
+    });
+}
+
+/* ── File pick ── */
+function onPick(input) {
+    const f = input.files[0];
+    if (!f) return;
+    const fn = document.getElementById('fname');
+    fn.textContent = '📎 ' + f.name;
+    fn.style.display = 'block';
+    document.getElementById('btn-go').disabled = false;
+    document.getElementById('cli-name').textContent = f.name.replace(/\.[^.]+$/, '');
+    document.getElementById('cli-file').textContent = f.name;
+}
+
+/* Drag & drop */
+const drop = document.getElementById('drop');
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => {
+    e.preventDefault();
+    drop.classList.remove('over');
+    const f = e.dataTransfer.files[0];
+    if (f) {
+        const dt = new DataTransfer(); dt.items.add(f);
+        document.getElementById('fi').files = dt.files;
+        onPick(document.getElementById('fi'));
+    }
+});
+
+/* ── Column Mapping ── */
+let _pollTimer = null;
+let _csvText   = '';
+let _csvHeaders = [];
+
+// Highlight select border when a value is chosen
+function onMapChange(sel) {
+    sel.classList.toggle('has-val', sel.value !== '');
+}
+
+// Populate all 5 dropdowns with detected column headers
+function _poblarDropdowns(headers) {
+    ['map-sel-costo','map-sel-km','map-sel-ruta','map-sel-unidad','map-sel-mes'].forEach(id => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '<option value="">— Seleccionar —</option>';
+
+        // Special combo option for ruta: Origen + Destino
+        if (id === 'map-sel-ruta') {
+            const og = headers.find(h => /origen|origin|salida/i.test(h));
+            const ds = headers.find(h => /destino|destination|llegada/i.test(h));
+            if (og && ds) {
+                const opt = document.createElement('option');
+                opt.value = `__combo__${og}||${ds}`;
+                opt.textContent = `🔗 ${og} + ${ds} (combinar)`;
+                sel.appendChild(opt);
+            }
+        }
+
+        headers.forEach(h => {
+            const opt = document.createElement('option');
+            opt.value = h;
+            opt.textContent = h.length > 32 ? h.slice(0, 30) + '…' : h;
+            sel.appendChild(opt);
+        });
+    });
+}
+
+// Smart auto-detection of columns (mirrors servidor.py logic, client-side)
+function _autoDetectar(headers) {
+    const find = (pats, excl) => {
+        for (const h of headers) {
+            const hl = h.toLowerCase();
+            if (pats.some(p => hl.includes(p))) {
+                if (excl && excl.some(e => hl.includes(e))) continue;
+                return h;
+            }
+        }
+        return null;
+    };
+
+    const costo  = find(['total'],                        ['km','por','rate','tarifa'])
+                || find(['costo','importe','monto','flete'], ['por','km','rate','tarifa']);
+    const km     = find(['km','iló','kilom','distancia'], ['costo','por','tarifa','precio','rate']);
+    const rutaH  = find(['ruta','corredor'],              []);
+    const og     = headers.find(h => /origen|origin|salida/i.test(h));
+    const ds     = headers.find(h => /destino|destination|llegada/i.test(h));
+    const unidad = find(['unidad','placa','vehiculo','economico'], []);
+    const mes    = find(['mes','fecha','periodo','month','date'],  []);
+
+    const setVal = (id, val) => {
+        if (!val) return;
+        const sel = document.getElementById(id);
+        if ([...sel.options].some(o => o.value === val)) {
+            sel.value = val;
+            sel.classList.add('has-val');
+        }
+    };
+
+    setVal('map-sel-costo',  costo);
+    setVal('map-sel-km',     km);
+    if (rutaH) {
+        setVal('map-sel-ruta', rutaH);
+    } else if (og && ds) {
+        setVal('map-sel-ruta', `__combo__${og}||${ds}`);
+    }
+    setVal('map-sel-unidad', unidad);
+    setVal('map-sel-mes',    mes);
+}
+
+// Show the mapping screen after file is read
+async function mostrarMapeo() {
+    const f = document.getElementById('fi').files[0];
+    if (!f) return;
+    try {
+        _csvText = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                resolve(XLSX.utils.sheet_to_csv(ws));
+            };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(f);
+        });
+
+        // Parse headers from first CSV line (handle quoted commas)
+        _csvHeaders = _csvText.split('\n')[0]
+            .split(',')
+            .map(h => h.trim().replace(/^"|"$/g, ''));
+
+        document.getElementById('map-filename').textContent = f.name;
+        document.getElementById('map-colcount').textContent =
+            `${_csvHeaders.length} columna${_csvHeaders.length !== 1 ? 's' : ''} detectada${_csvHeaders.length !== 1 ? 's' : ''}`;
+
+        _poblarDropdowns(_csvHeaders);
+        _autoDetectar(_csvHeaders);
+        show('scr-mapping');
+    } catch (e) {
+        alert('Error al leer el archivo: ' + e.message);
+    }
+}
+
+// Back to upload screen without losing file selection
+function volverUpload() {
+    show('scr-upload');
+}
+
+// Confirm mapping and send to server
+function confirmarMapeo() {
+    const costo  = document.getElementById('map-sel-costo').value;
+    const km     = document.getElementById('map-sel-km').value;
+    const ruta   = document.getElementById('map-sel-ruta').value;
+    const unidad = document.getElementById('map-sel-unidad').value;
+    const mes    = document.getElementById('map-sel-mes').value;
+
+    if (!costo || !km) {
+        const miss = [!costo && 'Costo Total', !km && 'Kilómetros'].filter(Boolean);
+        alert(`Por favor selecciona: ${miss.join(' y ')}`);
+        return;
+    }
+
+    const col_map = {};
+    if (costo)  col_map.costo  = costo;
+    if (km)     col_map.km     = km;
+    if (ruta)   col_map.ruta   = ruta;
+    if (unidad) col_map.unidad = unidad;
+    if (mes)    col_map.mes    = mes;
+
+    _enviarAnalisis(_csvText, col_map);
+}
+
+// Actual API call (replaces analizar() inline logic)
+async function _enviarAnalisis(datos, col_map) {
+    show('scr-loading');
+    try {
+        const response = await fetch('/analizar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ datos, col_map })
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error);
+        _iniciarPolling(data.job_id);
+    } catch (e) {
+        show('scr-mapping');
+        alert('Error: ' + e.message);
+    }
+}
+
+/* ── Analyze (legacy — kept for compatibility) ── */
+async function analizar() {
+    const f = document.getElementById('fi').files[0];
+    if (!f) return;
+    show('scr-loading');
+    try {
+        const datos = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                resolve(XLSX.utils.sheet_to_csv(ws));
+            };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(f);
+        });
+        const response = await fetch('/analizar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ datos })
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error);
+        _iniciarPolling(data.job_id);
+    } catch (e) {
+        show('scr-upload');
+        alert('Error: ' + e.message);
+    }
+}
+
+function _iniciarPolling(jobId) {
+    if (_pollTimer) clearInterval(_pollTimer);
+    _pollTimer = setInterval(async () => {
+        try {
+            const res = await fetch('/resultado/' + jobId);
+            const data = await res.json();
+            if (data.status === 'done') {
+                clearInterval(_pollTimer);
+                _pollTimer = null;
+                renderDash(data.analisis);
+            } else if (data.status === 'error') {
+                clearInterval(_pollTimer);
+                _pollTimer = null;
+                show('scr-upload');
+                alert('Error: ' + (data.error || 'Error desconocido'));
+            }
+        } catch (e) {
+            clearInterval(_pollTimer);
+            _pollTimer = null;
+            show('scr-upload');
+            alert('Error de red: ' + e.message);
+        }
+    }, 3000);
+}
+
+/* ── Reset ── */
+function resetear() {
+    if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+    _csvText    = '';
+    _csvHeaders = [];
+    // Reset dropdowns
+    ['map-sel-costo','map-sel-km','map-sel-ruta','map-sel-unidad','map-sel-mes'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (sel) { sel.innerHTML = '<option value="">— Seleccionar —</option>'; sel.classList.remove('has-val'); }
+    });
+    show('scr-upload');
+    document.getElementById('btn-pdf').style.display = 'none';
+    document.getElementById('tp-sub').textContent = 'Análisis inteligente de operaciones logísticas';
+    document.getElementById('fi').value = '';
+    document.getElementById('fname').style.display = 'none';
+    document.getElementById('btn-go').disabled = true;
+    document.getElementById('cli-name').textContent = 'Sin sesión';
+    document.getElementById('cli-file').textContent = '—';
+    setSt('inactive');
+    Object.values(charts).forEach(c => c.destroy());
+    charts = {};
+}
+
+function setSt(state) {
+    const dot = document.getElementById('st-dot');
+    const lbl = document.getElementById('st-lbl');
+    if (state === 'active') {
+        dot.style.background = 'var(--accent)';
+        lbl.style.color = 'var(--accent)';
+        lbl.textContent = 'Sesión activa';
+    } else {
+        dot.style.background = 'var(--text-3)';
+        lbl.style.color = 'var(--text-3)';
+        lbl.textContent = 'Inactivo';
+    }
+}
+
+/* ── Nav ── */
+function navClick(el, secId) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+    const sec = document.getElementById(secId);
+    if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── Number formatting ── */
+function fmt(n) { return Number(n).toLocaleString('es-MX'); }
+function fmtS(n) {
+    n = Number(n);
+    if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+    return fmt(n);
+}
+
+/* ── Render dashboard ── */
+function renderDash(d) {
+    show('scr-dash');
+    document.getElementById('btn-pdf').style.display = 'inline-flex';
+    document.getElementById('tp-sub').textContent =
+        'Actualizado ' + new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+    setSt('active');
+
+    const kpis = d.kpis || [];
+
+    /* Metric strip — reads from d.resumen, not d.kpis */
+    const res = d.resumen || {};
+    document.getElementById('mv1').textContent = res.total_viajes != null ? fmtS(res.total_viajes) : '—';
+    document.getElementById('mv2').textContent = res.costo_total  != null ? '$' + fmtS(res.costo_total) : '—';
+    document.getElementById('mv3').textContent = res.km_totales   != null ? fmtS(res.km_totales) : '—';
+    document.getElementById('mv4').textContent = (d.unidades_rendimiento || []).length || '—';
+
+    /* KPI cards */
+    const colors = ['ka','kb','kc','kd'];
+    const tc = t => t==='positiva'?'up':t==='negativa'?'down':'flat';
+    const ta = t => t==='positiva'?'↑':t==='negativa'?'↓':'→';
+    const grid = document.getElementById('sec-kpis');
+    grid.innerHTML = '';
+    kpis.slice(0,4).forEach((k,i) => {
+        grid.innerHTML += `<div class="kpi-card ${colors[i]}">
+            <div class="kpi-lbl">${k.label}</div>
+            <div class="kpi-val">${fmtS(k.valor)}</div>
+            <div class="kpi-unit">${k.unidad}</div>
+            <div class="kpi-foot">
+                <span class="trend ${tc(k.tendencia)}">${ta(k.tendencia)} ${k.cambio||''}</span>
+                <span class="trend-lbl">vs período anterior</span>
+            </div>
+        </div>`;
+    });
+
+    /* Conclusion */
+    document.getElementById('concl-txt').textContent = d.conclusiones || d.resumen || '—';
+
+    /* Charts */
+    buildMonthly(d.viajes_por_periodo || []);
+    buildDonut(d.costos_por_categoria || []);
+
+    /* Route bars */
+    buildRoutes(d.rutas_eficiencia || []);
+
+    /* Units table */
+    buildUnits(d.unidades_rendimiento || []);
+
+    /* Alerts */
+    buildAlerts(d.alertas || []);
+
+    /* Recs */
+    buildRecs(d.recomendaciones || []);
+}
+
+/* ── Chart: monthly bars ── */
+function buildMonthly(data) {
+    if (charts.m) charts.m.destroy();
+    const ctx = document.getElementById('ch-monthly').getContext('2d');
+    if (!data || data.length === 0) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.fillStyle = '#4a5568';
+        ctx.font = '13px DM Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Sin datos de período disponibles', ctx.canvas.width / 2, ctx.canvas.height / 2);
+        return;
+    }
+    const n = data.length;
+    charts.m = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.periodo),
+            datasets: [{
+                label: 'Viajes',
+                data: data.map(d => d.viajes),
+                backgroundColor: data.map((_,i) => i===n-1
+                    ? 'rgba(0,212,170,.9)'
+                    : 'rgba(0,212,170,.28)'),
+                borderRadius: 6,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: tooltipCfg()
+            },
+            scales: {
+                x: axCfg(),
+                y: axCfg()
+            }
+        }
+    });
+}
+
+/* ── Chart: donut costs ── */
+function buildDonut(data) {
+    if (charts.d) charts.d.destroy();
+    const canvas = document.getElementById('ch-costs');
+    const empty  = document.getElementById('ch-costs-empty');
+    if (!data || data.length === 0) {
+        canvas.style.display = 'none';
+        empty.style.display  = 'block';
+        return;
+    }
+    canvas.style.display = '';
+    empty.style.display  = 'none';
+    const ctx = canvas.getContext('2d');
+    charts.d = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(d => d.categoria),
+            datasets: [{
+                data: data.map(d => d.monto),
+                backgroundColor: PALETTE.slice(0, data.length),
+                borderWidth: 0,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#8892a4',
+                        padding: 14,
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        font: { family: 'DM Sans', size: 12 }
+                    }
+                },
+                tooltip: {
+                    ...tooltipCfg(),
+                    callbacks: {
+                        label: c => ` ${c.label}: $${fmt(c.raw)} (${data[c.dataIndex]?.porcentaje||0}%)`
+                    }
+                }
+            }
+        }
+    });
+}
+
+function tooltipCfg() {
+    return {
+        backgroundColor: '#141c2b',
+        borderColor: '#1a2030',
+        borderWidth: 1,
+        titleColor: '#eef2ff',
+        bodyColor: '#8892a4',
+        padding: 10,
+    };
+}
+
+function axCfg() {
+    return {
+        ticks: { color: '#4a5568', font: { family: 'DM Sans', size: 12 } },
+        grid: { color: 'rgba(255,255,255,.04)' }
+    };
+}
+
+/* ── Route efficiency bars ── */
+function buildRoutes(routes) {
+    const list = document.getElementById('route-list');
+    list.innerHTML = '';
+    document.getElementById('rutas-tag').textContent = routes.length + ' rutas';
+    if (!routes.length) {
+        list.innerHTML = '<p style="color:var(--text-3);font-size:13px">Sin datos de rutas</p>';
+        return;
+    }
+    const maxC = Math.max(...routes.map(r => Number(r.costo_km)));
+    routes.forEach(r => {
+        const ck = Number(r.costo_km);
+        const ckDisplay = isNaN(ck) || ck === 0 ? '—' : '$' + ck.toFixed(2);
+        const pct = maxC > 0 ? (Number(r.costo_km) / maxC * 100).toFixed(1) : 0;
+        list.innerHTML += `
+        <div class="route-row">
+            <div class="route-hdr">
+                <div class="route-name">${r.ruta}</div>
+                <div class="route-meta">
+                    <div class="route-cost">${ckDisplay}/km</div>
+                    <span class="efic ${r.eficiencia}">${r.eficiencia}</span>
+                </div>
+            </div>
+            <div class="bar-track">
+                <div class="bar-fill ${r.eficiencia}" style="width:${pct}%"></div>
+            </div>
+        </div>`;
+    });
+}
+
+/* ── Units table ── */
+function buildUnits(units) {
+    const tbody = document.getElementById('units-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('units-tag').textContent = units.length + ' unidades';
+    units.forEach(u => {
+        const sc = Number(u.eficiencia_score);
+        const cls = sc >= 75 ? 'hi' : sc >= 50 ? 'mid' : 'lo';
+        tbody.innerHTML += `<tr>
+            <td class="td-name">${u.unidad}</td>
+            <td>${fmt(u.viajes)}</td>
+            <td>${fmt(u.km_total)} km</td>
+            <td>$${fmt(u.costo_total)}</td>
+            <td><span class="sbadge ${cls}">${sc}/100</span></td>
+        </tr>`;
+    });
+}
+
+/* ── Alerts ── */
+function buildAlerts(alertas) {
+    const grid = document.getElementById('alerts-grid');
+    grid.innerHTML = '';
+    document.getElementById('alert-tag').textContent = alertas.length + ' alertas';
+    const ico = { critica:'🚨', advertencia:'⚠️', info:'ℹ️' };
+    const criticas = alertas.filter(a => a.tipo === 'critica').length;
+    if (criticas > 0) {
+        const p = document.getElementById('alert-pill');
+        p.textContent = criticas; p.style.display = 'inline';
+    }
+    alertas.forEach(a => {
+        grid.innerHTML += `
+        <div class="alert-card ${a.tipo}">
+            <div class="alert-ico ${a.tipo}">${ico[a.tipo]||'ℹ️'}</div>
+            <div class="alert-body">
+                <div class="alert-tipo ${a.tipo}">${a.tipo}</div>
+                <div class="alert-ttl">${a.titulo}</div>
+                <div class="alert-desc">${a.descripcion}</div>
+                ${a.unidad ? `<div class="alert-unit">Unidad: ${a.unidad}</div>` : ''}
+            </div>
+        </div>`;
+    });
+}
+
+/* ── Recommendations ── */
+function buildRecs(recs) {
+    const list = document.getElementById('rec-list');
+    list.innerHTML = '';
+    recs.forEach(r => {
+        list.innerHTML += `
+        <div class="rec-item">
+            <div class="rec-dot ${r.prioridad}"></div>
+            <div class="rec-body">
+                <div class="rec-pri ${r.prioridad}">Prioridad ${r.prioridad}</div>
+                <div class="rec-ttl">${r.titulo}</div>
+                <div class="rec-desc">${r.descripcion}</div>
+                ${r.ahorro_estimado ? `<div class="rec-save">💰 Ahorro estimado: ${r.ahorro_estimado}</div>` : ''}
+            </div>
+        </div>`;
+    });
+}
+
+/* ── PDF export ── */
+async function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const el = document.getElementById('scr-dash');
+    const canvas = await html2canvas(el, {
+        backgroundColor: '#07090f',
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+    });
+    const img = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p','mm','a4');
+    const W = pdf.internal.pageSize.getWidth();
+    const H = pdf.internal.pageSize.getHeight();
+    const iH = (canvas.height * W) / canvas.width;
+    let y = 0;
+    while (y < iH) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(img, 'PNG', 0, -y, W, iH);
+        y += H;
+    }
+    pdf.save('LogiAnalytics-Reporte.pdf');
+}
+
+/* Init */
+show('scr-upload');
+</script>
+</body>
+</html>

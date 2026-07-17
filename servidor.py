@@ -369,6 +369,19 @@ def resultado(job_id: str):
     return jsonify({"ok": True, **job})
 
 
+@app.route("/whatsapp", methods=["POST"])
+def whatsapp_webhook():
+    from twilio.twiml.messaging_response import MessagingResponse
+
+    incoming_msg = request.form.get("Body", "").strip()
+    from_number = request.form.get("From", "")
+    print(f"DEBUG WHATSAPP - {from_number}: {incoming_msg}")
+
+    resp = MessagingResponse()
+    resp.message("Viaje recibido ✅")
+    return str(resp), 200, {"Content-Type": "application/xml"}
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 3000))
     app.run(port=port)
