@@ -1042,6 +1042,10 @@
                 <div class="picked-name" id="fname"></div>
                 <button class="btn-go" id="btn-go" onclick="mostrarMapeo()" disabled>Analizar con IA →</button>
             </div>
+            <div style="text-align:center;margin-top:22px;">
+                <button class="btn-pick" onclick="analizarWhatsApp()">📱 Analizar viajes de WhatsApp</button>
+                <p style="font-size:12px;color:var(--text-2);margin-top:8px;">Usa los viajes reportados por los choferes vía WhatsApp — sin subir archivos</p>
+            </div>
         </div>
 
         <!-- ── LOADING ── -->
@@ -1480,6 +1484,20 @@ async function analizar() {
             body: JSON.stringify({ datos })
         });
         if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error);
+        _iniciarPolling(data.job_id);
+    } catch (e) {
+        show('scr-upload');
+        alert('Error: ' + e.message);
+    }
+}
+
+/* ── Analyze WhatsApp trips (reads from Postgres, no file needed) ── */
+async function analizarWhatsApp() {
+    show('scr-loading');
+    try {
+        const response = await fetch('/analizar_whatsapp', { method: 'POST' });
         const data = await response.json();
         if (!data.ok) throw new Error(data.error);
         _iniciarPolling(data.job_id);

@@ -362,6 +362,50 @@ def analizar():
     return jsonify({"ok": True, "job_id": job_id}), 202
 
 
+_MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+             "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+
+
+@app.route("/analizar_whatsapp", methods=["POST"])
+def analizar_whatsapp():
+    """Analiza los viajes capturados por WhatsApp usando el mismo pipeline
+    que el flujo de Excel: los convierte a CSV y reutiliza procesar()."""
+    try:
+        conn = _db_conn()
+        if conn is None:
+            return jsonify({"ok": False, "error": "Sin base de datos configurada"}), 500
+        _db_init(conn)
+        with conn.cursor() as cur:
+            cur.execute("SELECT fecha, telefono, origen, destino, km, costo FROM viajes_whatsapp "
+                        "WHERE origen IS NOT NULL AND km IS NOT NULL AND costo IS NOT NULL "
+                        "ORDER BY fecha")
+            filas = cur.fetchall()
+        conn.close()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+    if not filas:
+        return jsonify({"ok": False, "error": "Aún no hay viajes capturados por WhatsApp"}), 400
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["Origen", "Destino", "Km", "Costo Total", "Unidad", "Mes"])
+    for fecha, telefono, origen, destino, km, costo in filas:
+        mes = f"{_MESES_ES[fecha.month - 1]} {fecha.year}" if fecha else ""
+        unidad = (telefono or "").replace("whatsapp:", "")
+        writer.writerow([origen, destino, km, costo, unidad, mes])
+
+    col_map = {"costo": "Costo Total", "km": "Km",
+               "ruta": "__combo__Origen||Destino", "unidad": "Unidad", "mes": "Mes"}
+
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {"status": "pending", "analisis": None, "error": None}
+    thread = threading.Thread(target=procesar, args=(job_id, buf.getvalue(), col_map), daemon=True)
+    thread.start()
+
+    return jsonify({"ok": True, "job_id": job_id, "viajes": len(filas)}), 202
+
+
 @app.route("/resultado/<job_id>", methods=["GET"])
 def resultado(job_id: str):
     job = jobs.get(job_id)
