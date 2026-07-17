@@ -4,3 +4,4 @@ anthropic
 openpyxl
 gunicorn
 twilio
+psycopg2-binary

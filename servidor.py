@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 import json
 import io
@@ -369,6 +370,71 @@ def resultado(job_id: str):
     return jsonify({"ok": True, **job})
 
 
+# ---------- WhatsApp: captura de viajes ----------
+
+def _db_conn():
+    import psycopg2
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        return None
+    return psycopg2.connect(url)
+
+
+def _db_init(conn):
+    with conn.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS viajes_whatsapp (
+                id SERIAL PRIMARY KEY,
+                fecha TIMESTAMP DEFAULT NOW(),
+                telefono TEXT,
+                mensaje TEXT,
+                origen TEXT,
+                destino TEXT,
+                km REAL,
+                costo REAL
+            )
+        """)
+    conn.commit()
+
+
+def parsear_viaje(texto):
+    """Extrae origen, destino, km y costo de un mensaje tipo
+    'Monterrey Saltillo, 320km, 2500' o 'Monterrey-Saltillo 320 km $2,500'."""
+    origen = destino = None
+    km = costo = None
+
+    km_match = re.search(r'(\d[\d,]*(?:\.\d+)?)\s*km', texto, re.IGNORECASE)
+    if km_match:
+        km = float(km_match.group(1).replace(",", ""))
+
+    texto_sin_km = texto[:km_match.start()] + texto[km_match.end():] if km_match else texto
+    costo_match = re.search(r'\$\s*([\d,]+(?:\.\d+)?)', texto_sin_km)
+    if not costo_match:
+        nums = re.findall(r'(?<![\w.])(\d[\d,]*(?:\.\d+)?)(?![\w])', texto_sin_km)
+        if nums:
+            costo = float(nums[-1].replace(",", ""))
+    else:
+        costo = float(costo_match.group(1).replace(",", ""))
+
+    primera_parte = texto.split(",")[0].strip()
+    primera_parte = re.sub(r'(\d[\d,]*(?:\.\d+)?)\s*km', "", primera_parte, flags=re.IGNORECASE)
+    primera_parte = re.sub(r'\$\s*[\d,]*(?:\.\d+)?', "", primera_parte)
+    primera_parte = re.sub(r'\d[\d,]*(?:\.\d+)?\s*$', "", primera_parte).strip(" -,")
+    if "-" in primera_parte:
+        partes = [p.strip() for p in primera_parte.split("-", 1)]
+        origen, destino = partes[0], partes[1]
+    elif " a " in primera_parte.lower():
+        idx = primera_parte.lower().index(" a ")
+        origen, destino = primera_parte[:idx].strip(), primera_parte[idx + 3:].strip()
+    else:
+        palabras = primera_parte.split()
+        if len(palabras) >= 2:
+            origen = palabras[0]
+            destino = " ".join(palabras[1:])
+
+    return origen, destino, km, costo
+
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_webhook():
     from twilio.twiml.messaging_response import MessagingResponse
@@ -377,9 +443,61 @@ def whatsapp_webhook():
     from_number = request.form.get("From", "")
     print(f"DEBUG WHATSAPP - {from_number}: {incoming_msg}")
 
+    origen, destino, km, costo = parsear_viaje(incoming_msg)
+
+    guardado = False
+    try:
+        conn = _db_conn()
+        if conn is not None:
+            _db_init(conn)
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO viajes_whatsapp (telefono, mensaje, origen, destino, km, costo) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (from_number, incoming_msg, origen, destino, km, costo),
+                )
+            conn.commit()
+            conn.close()
+            guardado = True
+    except Exception as e:
+        print(f"DEBUG WHATSAPP DB ERROR - {e}")
+
     resp = MessagingResponse()
-    resp.message("Viaje recibido ✅")
+    if origen and destino and km and costo:
+        texto = f"Viaje registrado ✅\n{origen} → {destino}\n{km:,.0f} km | ${costo:,.0f}"
+        if not guardado:
+            texto += "\n(⚠️ sin base de datos conectada)"
+    else:
+        texto = ("No pude leer todos los datos 🤔\n"
+                 "Mándalo así: Origen-Destino, 320km, $2500")
+    resp.message(texto)
     return str(resp), 200, {"Content-Type": "application/xml"}
+
+
+@app.route("/viajes", methods=["GET"])
+def viajes_capturados():
+    try:
+        conn = _db_conn()
+        if conn is None:
+            return jsonify({"ok": False, "error": "Sin DATABASE_URL configurada"}), 500
+        _db_init(conn)
+        with conn.cursor() as cur:
+            cur.execute("SELECT fecha, telefono, origen, destino, km, costo, mensaje FROM viajes_whatsapp ORDER BY fecha DESC LIMIT 200")
+            filas = cur.fetchall()
+        conn.close()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+    rows_html = "".join(
+        f"<tr><td>{f[0]:%d/%m/%Y %H:%M}</td><td>{f[1] or ''}</td><td>{f[2] or '?'}</td>"
+        f"<td>{f[3] or '?'}</td><td>{f[4] or '?'}</td><td>{f[5] or '?'}</td><td>{f[6]}</td></tr>"
+        for f in filas
+    )
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Viajes por WhatsApp</title>
+<style>body{{font-family:sans-serif;margin:2rem}}table{{border-collapse:collapse;width:100%}}
+td,th{{border:1px solid #ccc;padding:6px 10px;text-align:left}}th{{background:#f4f4f4}}</style></head>
+<body><h2>Viajes capturados por WhatsApp ({len(filas)})</h2>
+<table><tr><th>Fecha</th><th>Teléfono</th><th>Origen</th><th>Destino</th><th>Km</th><th>Costo</th><th>Mensaje original</th></tr>
+{rows_html}</table></body></html>"""
 
 
 if __name__ == "__main__":
