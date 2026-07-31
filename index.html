@@ -992,6 +992,10 @@
         <div class="nav-item" onclick="navClick(this,'sec-recs')">
             <span class="nav-ico">💡</span>Recomendaciones
         </div>
+        <div class="nav-item" onclick="abrirMantenimiento(this)">
+            <span class="nav-ico">🔧</span>Mantenimiento
+            <span class="nav-pill danger" id="mant-pill" style="display:none"></span>
+        </div>
     </nav>
 
     <div class="client-card">
@@ -1253,6 +1257,39 @@
             </div>
 
         </div><!-- /scr-dash -->
+
+        <!-- ── MANTENIMIENTO ── -->
+        <div id="scr-mant" style="display:none;padding:30px 4px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <div>
+                    <div class="topbar-title syne" style="font-size:26px">Mantenimiento de Flota 🔧</div>
+                    <div style="color:var(--text-2);font-size:14px;margin-top:4px">Cuándo le toca servicio a cada unidad, según su kilometraje real</div>
+                </div>
+                <div style="display:flex;gap:9px">
+                    <button class="btn btn-ghost" onclick="cargarMantenimiento()">↻ Actualizar</button>
+                    <button class="btn btn-ghost" onclick="volverDash()">← Dashboard</button>
+                </div>
+            </div>
+
+            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px 20px;margin:18px 0">
+                <div style="font-weight:700;margin-bottom:12px">Dar de alta / actualizar unidad</div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+                    <div><div style="font-size:11px;color:var(--text-2);margin-bottom:4px">Clave *</div>
+                        <input id="mu-clave" placeholder="C40T" style="padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#fff;width:110px"></div>
+                    <div><div style="font-size:11px;color:var(--text-2);margin-bottom:4px">Tipo</div>
+                        <input id="mu-tipo" placeholder="40 ton" style="padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#fff;width:110px"></div>
+                    <div><div style="font-size:11px;color:var(--text-2);margin-bottom:4px">Año</div>
+                        <input id="mu-anio" placeholder="2019" style="padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#fff;width:90px"></div>
+                    <div><div style="font-size:11px;color:var(--text-2);margin-bottom:4px">Km actual (odómetro)</div>
+                        <input id="mu-km" placeholder="180000" style="padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#fff;width:130px"></div>
+                    <button class="btn btn-main" onclick="altaUnidad()">Guardar unidad</button>
+                </div>
+                <div style="font-size:11.5px;color:var(--text-2);margin-top:10px">Tip: las unidades también se crean solas cuando un chofer reporta con su clave (ej. <b>C40T Monterrey-Saltillo, 320km, $2500</b>). El km actual se acumula con cada viaje.</div>
+            </div>
+
+            <div id="mant-lista"></div>
+        </div>
+
     </div><!-- /content -->
 </main>
 
@@ -1264,10 +1301,11 @@ let charts = {};
 
 /* ── Screens ── */
 function show(id) {
-    ['scr-upload','scr-mapping','scr-loading','scr-dash'].forEach(s => {
+    ['scr-upload','scr-mapping','scr-loading','scr-dash','scr-mant'].forEach(s => {
         const el = document.getElementById(s);
+        if (!el) return;
         if (s === id) {
-            el.style.display = (s === 'scr-dash') ? 'block' : 'flex';
+            el.style.display = (s === 'scr-dash' || s === 'scr-mant') ? 'block' : 'flex';
         } else {
             el.style.display = 'none';
         }
@@ -1571,10 +1609,119 @@ function setSt(state) {
 
 /* ── Nav ── */
 function navClick(el, secId) {
+    show('scr-dash');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     el.classList.add('active');
     const sec = document.getElementById(secId);
     if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── Mantenimiento ── */
+function abrirMantenimiento(el) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    if (el) el.classList.add('active');
+    show('scr-mant');
+    cargarMantenimiento();
+}
+
+function volverDash() {
+    show('scr-dash');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const first = document.querySelector('.nav-item');
+    if (first) first.classList.add('active');
+}
+
+async function cargarMantenimiento() {
+    const cont = document.getElementById('mant-lista');
+    cont.innerHTML = '<p style="color:var(--text-2)">Cargando…</p>';
+    try {
+        const r = await fetch('/api/mantenimiento');
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error);
+        renderMant(d.unidades);
+    } catch (e) {
+        cont.innerHTML = '<p style="color:#ef4444">Error: ' + e.message + '</p>';
+    }
+}
+
+function renderMant(unidades) {
+    const cont = document.getElementById('mant-lista');
+    if (!unidades.length) {
+        cont.innerHTML = '<p style="color:var(--text-2)">Aún no hay unidades. Da de alta una arriba, o pide a un chofer que reporte con su clave (ej. C40T Monterrey-Saltillo, 320km, $2500).</p>';
+        return;
+    }
+    const col = { vencido: '#ef4444', proximo: '#f59e0b', ok: '#00d4aa' };
+    const lbl = { vencido: 'VENCIDO', proximo: 'PRÓXIMO', ok: 'OK' };
+    const btn = 'padding:5px 9px;border-radius:7px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#fff;font-size:11.5px;cursor:pointer;margin-left:5px';
+    let vencidos = 0;
+    cont.innerHTML = unidades.map(u => {
+        const filas = u.piezas.map(p => {
+            const c = col[p.estado], nm = (p.nombre || '').replace(/'/g, '');
+            if (p.estado === 'vencido') vencidos++;
+            const info = p.estado === 'vencido'
+                ? 'Vencido por ' + Math.abs(p.faltan_km).toLocaleString('es-MX') + ' km'
+                : 'Faltan ' + Number(p.faltan_km).toLocaleString('es-MX') + ' km';
+            return `<tr style="border-top:1px solid rgba(255,255,255,.06)">
+                <td style="padding:9px 8px">${p.nombre} ${p.importancia === 'critico' ? '<span style="color:#ef4444;font-size:10.5px">● crítico</span>' : ''}</td>
+                <td style="padding:9px 8px;color:var(--text-2)">cada ${Number(p.intervalo_km).toLocaleString('es-MX')} km</td>
+                <td style="padding:9px 8px;color:var(--text-2)">${p.registrado ? ('últ. ' + Number(p.ultimo_km || 0).toLocaleString('es-MX') + ' km') : '<i>sin dato</i>'}</td>
+                <td style="padding:9px 8px"><span style="background:${c}22;color:${c};padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700">${lbl[p.estado]}</span> <span style="color:var(--text-2);font-size:12px">${info}</span></td>
+                <td style="padding:9px 8px;white-space:nowrap;text-align:right">
+                    <button style="${btn}" onclick="registrarInicial('${u.clave}',${p.tipo_id},'${nm}')">Registrar</button>
+                    <button style="${btn}" onclick="servicioHecho('${u.clave}',${p.tipo_id},'${nm}')">Servicio hecho</button>
+                </td></tr>`;
+        }).join('');
+        return `<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px;margin-bottom:18px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <div><span style="font-size:20px;font-weight:800">${u.clave}</span>
+                <span style="color:var(--text-2);margin-left:10px;font-size:13px">${u.tipo || ''} ${u.anio ? ('· ' + u.anio) : ''}</span></div>
+                <div style="color:var(--text-2);font-size:13px">${Number(u.km_actual).toLocaleString('es-MX')} km acumulados</div>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px">${filas}</table>
+        </div>`;
+    }).join('');
+    const pill = document.getElementById('mant-pill');
+    if (pill) { if (vencidos) { pill.style.display = 'inline-block'; pill.textContent = vencidos; } else pill.style.display = 'none'; }
+}
+
+async function altaUnidad() {
+    const clave = document.getElementById('mu-clave').value.trim();
+    if (!clave) { alert('Escribe la clave de la unidad'); return; }
+    const body = {
+        clave,
+        tipo: document.getElementById('mu-tipo').value.trim(),
+        anio: document.getElementById('mu-anio').value,
+        km_inicial: document.getElementById('mu-km').value
+    };
+    try {
+        const r = await fetch('/api/unidad', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error);
+        ['mu-clave', 'mu-tipo', 'mu-anio', 'mu-km'].forEach(i => document.getElementById(i).value = '');
+        cargarMantenimiento();
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+async function servicioHecho(clave, tipoId, nombre) {
+    if (!confirm('¿Marcar "' + nombre + '" como recién hecho en ' + clave + '?\nReinicia el contador al kilometraje actual de la unidad.')) return;
+    try {
+        const r = await fetch('/api/mantenimiento/servicio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave, tipo_id: tipoId }) });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error);
+        cargarMantenimiento();
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+async function registrarInicial(clave, tipoId, nombre) {
+    const km = prompt('¿A qué kilometraje se hizo por última vez "' + nombre + '" en ' + clave + '?\n(deja vacío si nunca se ha hecho)');
+    if (km === null) return;
+    const fecha = prompt('Fecha del último servicio (AAAA-MM-DD, opcional):') || null;
+    try {
+        const r = await fetch('/api/mantenimiento/registrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave, tipo_id: tipoId, ultimo_km: km, ultima_fecha: fecha }) });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error);
+        cargarMantenimiento();
+    } catch (e) { alert('Error: ' + e.message); }
 }
 
 /* ── Number formatting ── */

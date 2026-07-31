@@ -376,7 +376,7 @@ def analizar_whatsapp():
             return jsonify({"ok": False, "error": "Sin base de datos configurada"}), 500
         _db_init(conn)
         with conn.cursor() as cur:
-            cur.execute("SELECT fecha, telefono, origen, destino, km, costo FROM viajes_whatsapp "
+            cur.execute("SELECT fecha, telefono, origen, destino, km, costo, clave FROM viajes_whatsapp "
                         "WHERE origen IS NOT NULL AND km IS NOT NULL AND costo IS NOT NULL "
                         "ORDER BY fecha")
             filas = cur.fetchall()
@@ -390,9 +390,9 @@ def analizar_whatsapp():
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(["Origen", "Destino", "Km", "Costo Total", "Unidad", "Mes"])
-    for fecha, telefono, origen, destino, km, costo in filas:
+    for fecha, telefono, origen, destino, km, costo, clave in filas:
         mes = f"{_MESES_ES[fecha.month - 1]} {fecha.year}" if fecha else ""
-        unidad = (telefono or "").replace("whatsapp:", "")
+        unidad = clave or (telefono or "").replace("whatsapp:", "")
         writer.writerow([origen, destino, km, costo, unidad, mes])
 
     col_map = {"costo": "Costo Total", "km": "Km",
@@ -424,6 +424,17 @@ def _db_conn():
     return psycopg2.connect(url)
 
 
+# Catálogo por defecto de mantenimiento (editable). Intervalos en km.
+# importancia: 'critico' (seguridad) o 'rutina'.
+_CATALOGO_DEFAULT = [
+    ("Cambio de aceite y filtro", 15000, "rutina"),
+    ("Rotación / revisión de llantas", 20000, "critico"),
+    ("Balatas y frenos", 40000, "critico"),
+    ("Afinación mayor", 60000, "rutina"),
+    ("Revisión de suspensión", 50000, "critico"),
+]
+
+
 def _db_init(conn):
     with conn.cursor() as cur:
         cur.execute("""
@@ -438,14 +449,70 @@ def _db_init(conn):
                 costo REAL
             )
         """)
+        # Clave de unidad en cada viaje (nuevo modelo: unidad = clave, no teléfono)
+        cur.execute("ALTER TABLE viajes_whatsapp ADD COLUMN IF NOT EXISTS clave TEXT")
+
+        # Registro de unidades (camiones)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS unidades (
+                clave TEXT PRIMARY KEY,
+                tipo TEXT,
+                anio INTEGER,
+                km_actual REAL DEFAULT 0,
+                creado TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # Catálogo de tipos de mantenimiento (intervalos e importancia)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mantenimiento_catalogo (
+                id SERIAL PRIMARY KEY,
+                nombre TEXT UNIQUE,
+                intervalo_km REAL,
+                importancia TEXT
+            )
+        """)
+        cur.execute("SELECT COUNT(*) FROM mantenimiento_catalogo")
+        if cur.fetchone()[0] == 0:
+            for nombre, intervalo, imp in _CATALOGO_DEFAULT:
+                cur.execute(
+                    "INSERT INTO mantenimiento_catalogo (nombre, intervalo_km, importancia) "
+                    "VALUES (%s, %s, %s) ON CONFLICT (nombre) DO NOTHING",
+                    (nombre, intervalo, imp),
+                )
+
+        # Historial: último servicio de cada pieza por unidad
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS mantenimiento_historial (
+                id SERIAL PRIMARY KEY,
+                clave TEXT,
+                tipo_id INTEGER,
+                ultimo_km REAL,
+                ultima_fecha DATE,
+                UNIQUE (clave, tipo_id)
+            )
+        """)
     conn.commit()
 
 
+def _es_clave(token):
+    """Una clave de unidad tiene letras y al menos un dígito (ej. C40T, C240T2, U12)."""
+    token = token.strip().strip(",")
+    return bool(re.match(r'^[A-Za-z]+\d+[A-Za-z0-9]*$', token))
+
+
 def parsear_viaje(texto):
-    """Extrae origen, destino, km y costo de un mensaje tipo
-    'Monterrey Saltillo, 320km, 2500' o 'Monterrey-Saltillo 320 km $2,500'."""
+    """Extrae clave, origen, destino, km y costo de un mensaje tipo
+    'C40T Monterrey-Saltillo, 320km, $2500'. La clave al inicio es opcional."""
+    clave = None
     origen = destino = None
     km = costo = None
+
+    # Clave de unidad = primer token si tiene forma de clave (letras + dígitos)
+    tokens = texto.strip().split()
+    if tokens and _es_clave(tokens[0]):
+        clave = tokens[0].strip().strip(",").upper()
+        texto = texto.strip()[len(tokens[0]):].strip(" ,")
 
     km_match = re.search(r'(\d[\d,]*(?:\.\d+)?)\s*km', texto, re.IGNORECASE)
     if km_match:
@@ -476,7 +543,7 @@ def parsear_viaje(texto):
             origen = palabras[0]
             destino = " ".join(palabras[1:])
 
-    return origen, destino, km, costo
+    return clave, origen, destino, km, costo
 
 
 @app.route("/whatsapp", methods=["POST"])
@@ -487,7 +554,7 @@ def whatsapp_webhook():
     from_number = request.form.get("From", "")
     print(f"DEBUG WHATSAPP - {from_number}: {incoming_msg}")
 
-    origen, destino, km, costo = parsear_viaje(incoming_msg)
+    clave, origen, destino, km, costo = parsear_viaje(incoming_msg)
 
     guardado = False
     try:
@@ -496,9 +563,17 @@ def whatsapp_webhook():
             _db_init(conn)
             with conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO viajes_whatsapp (telefono, mensaje, origen, destino, km, costo) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (from_number, incoming_msg, origen, destino, km, costo),
+                    "INSERT INTO viajes_whatsapp (telefono, mensaje, origen, destino, km, costo, clave) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (from_number, incoming_msg, origen, destino, km, costo, clave),
                 )
+                # Si hay clave y km, acumular kilometraje en la unidad (crearla si no existe)
+                if clave and km:
+                    cur.execute(
+                        "INSERT INTO unidades (clave, km_actual) VALUES (%s, %s) "
+                        "ON CONFLICT (clave) DO UPDATE SET km_actual = unidades.km_actual + %s",
+                        (clave, km, km),
+                    )
             conn.commit()
             conn.close()
             guardado = True
@@ -507,12 +582,13 @@ def whatsapp_webhook():
 
     resp = MessagingResponse()
     if origen and destino and km and costo:
-        texto = f"Viaje registrado ✅\n{origen} → {destino}\n{km:,.0f} km | ${costo:,.0f}"
+        encabezado = f"Viaje registrado ✅ (unidad {clave})" if clave else "Viaje registrado ✅"
+        texto = f"{encabezado}\n{origen} → {destino}\n{km:,.0f} km | ${costo:,.0f}"
         if not guardado:
             texto += "\n(⚠️ sin base de datos conectada)"
     else:
         texto = ("No pude leer todos los datos 🤔\n"
-                 "Mándalo así: Origen-Destino, 320km, $2500")
+                 "Mándalo así: C40T Origen-Destino, 320km, $2500")
     resp.message(texto)
     return str(resp), 200, {"Content-Type": "application/xml"}
 
@@ -542,6 +618,209 @@ td,th{{border:1px solid #ccc;padding:6px 10px;text-align:left}}th{{background:#f
 <body><h2>Viajes capturados por WhatsApp ({len(filas)})</h2>
 <table><tr><th>Fecha</th><th>Teléfono</th><th>Origen</th><th>Destino</th><th>Km</th><th>Costo</th><th>Mensaje original</th></tr>
 {rows_html}</table></body></html>"""
+
+
+# ---------- Mantenimiento: API ----------
+
+def _estado_pieza(km_actual, ultimo_km, intervalo_km):
+    """Devuelve (estado, faltan_km, proximo_km) para una pieza de una unidad."""
+    base = ultimo_km if ultimo_km is not None else 0
+    proximo = base + (intervalo_km or 0)
+    faltan = proximo - (km_actual or 0)
+    if intervalo_km and faltan <= 0:
+        estado = "vencido"
+    elif intervalo_km and faltan <= 0.15 * intervalo_km:
+        estado = "proximo"
+    else:
+        estado = "ok"
+    return estado, round(faltan, 1), round(proximo, 1)
+
+
+@app.route("/api/unidades", methods=["GET"])
+def api_unidades():
+    try:
+        conn = _db_conn()
+        if conn is None:
+            return jsonify({"ok": False, "error": "Sin base de datos"}), 500
+        _db_init(conn)
+        with conn.cursor() as cur:
+            cur.execute("SELECT clave, tipo, anio, km_actual FROM unidades ORDER BY clave")
+            filas = cur.fetchall()
+        conn.close()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, "unidades": [
+        {"clave": f[0], "tipo": f[1], "anio": f[2], "km_actual": f[3] or 0} for f in filas
+    ]})
+
+
+@app.route("/api/unidad", methods=["POST"])
+def api_unidad_alta():
+    body = request.json or {}
+    clave = (body.get("clave") or "").strip().upper()
+    if not clave:
+        return jsonify({"ok": False, "error": "Falta la clave"}), 400
+    tipo = (body.get("tipo") or "").strip() or None
+    anio = body.get("anio")
+    km_inicial = body.get("km_inicial")
+    try:
+        anio = int(anio) if anio not in (None, "") else None
+    except (ValueError, TypeError):
+        anio = None
+    try:
+        km_inicial = float(km_inicial) if km_inicial not in (None, "") else None
+    except (ValueError, TypeError):
+        km_inicial = None
+    try:
+        conn = _db_conn()
+        if conn is None:
+            return jsonify({"ok": False, "error": "Sin base de datos"}), 500
+        _db_init(conn)
+        with conn.cursor() as cur:
+            if km_inicial is not None:
+                cur.execute(
+                    "INSERT INTO unidades (clave, tipo, anio, km_actual) VALUES (%s, %s, %s, %s) "
+                    "ON CONFLICT (clave) DO UPDATE SET tipo=COALESCE(EXCLUDED.tipo, unidades.tipo), "
+                    "anio=COALESCE(EXCLUDED.anio, unidades.anio), km_actual=EXCLUDED.km_actual",
+                    (clave, tipo, anio, km_inicial),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO unidades (clave, tipo, anio) VALUES (%s, %s, %s) "
+                    "ON CONFLICT (clave) DO UPDATE SET tipo=COALESCE(EXCLUDED.tipo, unidades.tipo), "
+                    "anio=COALESCE(EXCLUDED.anio, unidades.anio)",
+                    (clave, tipo, anio),
+                )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True})
+
+
+@app.route("/api/catalogo", methods=["GET"])
+def api_catalogo():
+    try:
+        conn = _db_conn()
+        if conn is None:
+            return jsonify({"ok": False, "error": "Sin base de datos"}), 500
+        _db_init(conn)
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, nombre, intervalo_km, importancia FROM mantenimiento_catalogo ORDER BY id")
+            filas = cur.fetchall()
+        conn.close()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, "catalogo": [
+        {"id": f[0], "nombre": f[1], "intervalo_km": f[2], "importancia": f[3]} for f in filas
+    ]})
+
+
+@app.route("/api/mantenimiento", methods=["GET"])
+def api_mantenimiento():
+    """Estado de mantenimiento por unidad y por pieza."""
+    try:
+        conn = _db_conn()
+        if conn is None:
+            return jsonify({"ok": False, "error": "Sin base de datos"}), 500
+        _db_init(conn)
+        with conn.cursor() as cur:
+            cur.execute("SELECT clave, tipo, anio, km_actual FROM unidades ORDER BY clave")
+            unidades = cur.fetchall()
+            cur.execute("SELECT id, nombre, intervalo_km, importancia FROM mantenimiento_catalogo ORDER BY id")
+            catalogo = cur.fetchall()
+            cur.execute("SELECT clave, tipo_id, ultimo_km, ultima_fecha FROM mantenimiento_historial")
+            hist = {(h[0], h[1]): (h[2], h[3]) for h in cur.fetchall()}
+        conn.close()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+    resultado = []
+    for clave, tipo, anio, km_actual in unidades:
+        km_actual = km_actual or 0
+        piezas = []
+        for cid, nombre, intervalo, imp in catalogo:
+            ultimo_km, ultima_fecha = hist.get((clave, cid), (None, None))
+            estado, faltan, proximo = _estado_pieza(km_actual, ultimo_km, intervalo)
+            piezas.append({
+                "tipo_id": cid, "nombre": nombre, "importancia": imp,
+                "intervalo_km": intervalo, "ultimo_km": ultimo_km,
+                "ultima_fecha": ultima_fecha.isoformat() if ultima_fecha else None,
+                "proximo_km": proximo, "faltan_km": faltan, "estado": estado,
+                "registrado": (clave, cid) in hist,
+            })
+        # Prioridad de la unidad: vencido crítico > vencido > próximo > ok
+        orden = {"vencido": 0, "proximo": 1, "ok": 2}
+        peor = min((orden[p["estado"]] for p in piezas), default=2)
+        resultado.append({
+            "clave": clave, "tipo": tipo, "anio": anio,
+            "km_actual": round(km_actual, 1), "piezas": piezas, "prioridad": peor,
+        })
+    resultado.sort(key=lambda u: u["prioridad"])
+    return jsonify({"ok": True, "unidades": resultado})
+
+
+@app.route("/api/mantenimiento/registrar", methods=["POST"])
+def api_mant_registrar():
+    """Guarda el último servicio conocido de una pieza (mapeo inicial)."""
+    body = request.json or {}
+    clave = (body.get("clave") or "").strip().upper()
+    tipo_id = body.get("tipo_id")
+    ultimo_km = body.get("ultimo_km")
+    ultima_fecha = body.get("ultima_fecha") or None
+    if not clave or tipo_id is None:
+        return jsonify({"ok": False, "error": "Falta clave o tipo_id"}), 400
+    try:
+        ultimo_km = float(ultimo_km) if ultimo_km not in (None, "") else None
+    except (ValueError, TypeError):
+        ultimo_km = None
+    try:
+        conn = _db_conn()
+        if conn is None:
+            return jsonify({"ok": False, "error": "Sin base de datos"}), 500
+        _db_init(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO mantenimiento_historial (clave, tipo_id, ultimo_km, ultima_fecha) "
+                "VALUES (%s, %s, %s, %s) ON CONFLICT (clave, tipo_id) "
+                "DO UPDATE SET ultimo_km=EXCLUDED.ultimo_km, ultima_fecha=EXCLUDED.ultima_fecha",
+                (clave, int(tipo_id), ultimo_km, ultima_fecha),
+            )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True})
+
+
+@app.route("/api/mantenimiento/servicio", methods=["POST"])
+def api_mant_servicio():
+    """Marca servicio hecho HOY: reinicia el contador al km actual de la unidad."""
+    body = request.json or {}
+    clave = (body.get("clave") or "").strip().upper()
+    tipo_id = body.get("tipo_id")
+    if not clave or tipo_id is None:
+        return jsonify({"ok": False, "error": "Falta clave o tipo_id"}), 400
+    try:
+        conn = _db_conn()
+        if conn is None:
+            return jsonify({"ok": False, "error": "Sin base de datos"}), 500
+        _db_init(conn)
+        with conn.cursor() as cur:
+            cur.execute("SELECT km_actual FROM unidades WHERE clave=%s", (clave,))
+            row = cur.fetchone()
+            km_actual = (row[0] if row else 0) or 0
+            cur.execute(
+                "INSERT INTO mantenimiento_historial (clave, tipo_id, ultimo_km, ultima_fecha) "
+                "VALUES (%s, %s, %s, CURRENT_DATE) ON CONFLICT (clave, tipo_id) "
+                "DO UPDATE SET ultimo_km=EXCLUDED.ultimo_km, ultima_fecha=CURRENT_DATE",
+                (clave, int(tipo_id), km_actual),
+            )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, "km_actual": km_actual})
 
 
 if __name__ == "__main__":
