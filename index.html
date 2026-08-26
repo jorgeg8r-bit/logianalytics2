@@ -953,6 +953,56 @@
         .map-required-note b { color: var(--text-2); }
 
         .map-footer-btns { display: flex; gap: 9px; flex-shrink: 0; }
+
+        /* ────────────────────────────────────────
+           RESPONSIVE — móvil y tablet
+        ──────────────────────────────────────── */
+        @media (max-width: 820px) {
+            body { flex-direction: column; }
+            .sidebar {
+                position: static;
+                width: 100%;
+                height: auto;
+                flex-direction: column;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            .sidebar-logo { padding: 12px 16px; }
+            .sidebar-nav {
+                flex: none;
+                flex-direction: row;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 6px 8px;
+                gap: 4px;
+            }
+            .sidebar-nav .nav-group { display: none; }
+            .nav-item {
+                white-space: nowrap;
+                flex: 0 0 auto;
+                padding: 8px 12px;
+                border-radius: 8px;
+            }
+            .client-card { display: none; }
+            .main { margin-left: 0; }
+            .topbar { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+            .topbar-actions { flex-wrap: wrap; }
+            .content { padding: 16px 14px; }
+            .metric-strip { grid-template-columns: repeat(2, 1fr); }
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .charts-row { grid-template-columns: 1fr; }
+            .concl-body { grid-template-columns: 1fr; }
+            .alerts-grid { grid-template-columns: 1fr; }
+            /* Tablas se deslizan en horizontal en vez de desbordar */
+            table { display: block; width: 100%; overflow-x: auto; white-space: nowrap; }
+            #scr-mant { padding: 18px 12px; }
+        }
+        @media (max-width: 480px) {
+            .kpi-grid { grid-template-columns: 1fr; }
+            .metric-val { font-size: 24px; letter-spacing: -1px; }
+            .topbar-title { font-size: 15px; }
+        }
     </style>
 </head>
 <body>
